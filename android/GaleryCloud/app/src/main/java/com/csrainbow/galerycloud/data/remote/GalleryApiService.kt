@@ -9,8 +9,9 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.json.Json
+import okio.buffer
+import okio.source
 import java.io.InputStream
 
 class GalleryApiService {
@@ -76,10 +77,12 @@ class GalleryApiService {
                 header("pass", pass)
                 setBody(MultiPartFormDataContent(
                     formData {
-                        append("file", fileSize, Headers.build {
-                            append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
-                        }) {
-                            ByteReadChannel(inputStream)
+                        append("file", filename = fileName, size = if (fileSize > 0) fileSize else null) {
+                            inputStream.source().buffer().use { source ->
+                                this.buffer().use { sink ->
+                                    sink.writeAll(source)
+                                }
+                            }
                         }
                     }
                 ))
