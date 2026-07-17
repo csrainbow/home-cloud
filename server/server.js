@@ -24,8 +24,8 @@ if (!fs.existsSync(USERS_DB_FILE)) {
 
 // 🛡️ MIDDLEWARE AUTH
 const authMiddleware = (req, res, next) => {
-    const username = (req.headers.user || req.body.username || req.query.username || 'admin').toLowerCase().trim();
-    const password = (req.headers.pass || req.body.password || req.query.pass || '').trim();
+    const username = (req.headers.user || (req.body && req.body.username) || req.query.username || 'admin').toLowerCase().trim();
+    const password = (req.headers.pass || (req.body && req.body.password) || req.query.pass || '').trim();
     try {
         const usersData = JSON.parse(fs.readFileSync(USERS_DB_FILE, 'utf8'));
         const foundUser = usersData.find(u => u.username.toLowerCase() === username && u.password === password);
@@ -41,7 +41,7 @@ const authMiddleware = (req, res, next) => {
 // ⚙️ ENGINE STORAGE
 const storageConfiguration = multer.diskStorage({
     destination: (req, file, cb) => {
-        const username = (req.headers.user || req.body.username || 'admin').toLowerCase().trim();
+        const username = (req.headers.user || (req.body && req.body.username) || req.query.username || 'admin').toLowerCase().trim();
         let uploadPath = path.join(ABSOLUTE_HDD_DIR, username);
         const ext = path.extname(file.originalname).toLowerCase();
         const photoExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
