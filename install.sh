@@ -3,11 +3,21 @@ set -e
 
 REPO="https://github.com/csrainbow/home-cloud.git"
 INSTALL_DIR="/root/home-cloud-server"
-HDD_DIR="/media/devmon/sda1-ata-WDC_WD5000LPVX-2/home-cloud-media"
 
 echo "====================================="
 echo "  HOME CLOUD - One Click Install"
 echo "====================================="
+echo ""
+
+# Minta lokasi penyimpanan file
+DEFAULT_HDD="/media/devmon/sda1-ata-WDC_WD5000LPVX-2/home-cloud-media"
+read -p "Lokasi penyimpanan file (HDD) [$DEFAULT_HDD]: " HDD_DIR_INPUT
+HDD_DIR="${HDD_DIR_INPUT:-$DEFAULT_HDD}"
+
+echo ""
+echo "Server  -> $INSTALL_DIR"
+echo "Storage -> $HDD_DIR"
+echo ""
 
 # 1. Install Node.js jika belum ada
 if ! command -v node &>/dev/null; then
@@ -38,6 +48,10 @@ fi
 
 cd "$INSTALL_DIR"
 
+# Update path HDD di server.js
+echo "[3b/6] Menyesuaikan path penyimpanan di server.js..."
+sed -i "s|^const ABSOLUTE_HDD_DIR = .*|const ABSOLUTE_HDD_DIR = '$HDD_DIR';|" server/server.js
+
 # 4. Install dependency npm
 echo "[4/6] Menginstall dependency..."
 npm init -y --silent 2>/dev/null
@@ -67,4 +81,5 @@ echo "====================================="
 echo "  INSTALLASI SELESAI!"
 echo "  Server: http://$(hostname -I | awk '{print $1}'):3000"
 echo "  Login: admin / admin"
+echo "  Storage: $HDD_DIR"
 echo "====================================="
