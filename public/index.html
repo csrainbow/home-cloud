@@ -750,6 +750,19 @@
             window.location.href = "login.html";
         }
 
+        // Validate stored credentials on load
+        (async function validateSession() {
+            try {
+                const u = localStorage.getItem("cloud_username") || "admin";
+                const p = localStorage.getItem("cloud_password") || "admin";
+                const r = await fetch(`${API_BASE}/auth/storage?username=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}`);
+                if (r.status === 401) {
+                    localStorage.clear();
+                    window.location.href = "login.html";
+                }
+            } catch (e) { /* ignore, network errors will be handled per-call */ }
+        })();
+
         let currentActiveMenu = "home", currentTargetUser = null, allMediaItemsArray = [], selectedFileNamesArray = [], activeLightboxIndex = 0;
 
         function getActiveCloudUsername() {

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — HOME-CLOUDE</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0A0A0C; color: #E8E8F0;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+}
+body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+        radial-gradient(ellipse 60% 50% at 20% 50%, rgba(59,130,246,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 80% 30%, rgba(139,92,246,0.04) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+}
+.card {
+    position: relative; z-index: 1;
+    background: rgba(18,18,22,0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px; padding: 40px 32px;
+    width: 100%; max-width: 380px;
+}
+h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; text-align: center; }
+.sub { color: #707088; font-size: 13px; margin-bottom: 28px; text-align: center; }
+.input-group { margin-bottom: 16px; }
+.input-group label { display: block; font-size: 12px; color: #8888A0; margin-bottom: 6px; font-weight: 600; }
+.input-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    padding: 12px 14px; border-radius: 10px; color: #E8E8F0; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+}
+.input-group input:focus { border-color: #3B82F6; }
+.btn {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    background: #3B82F6; color: #fff;
+    transition: background 0.2s; margin-top: 8px;
+}
+.btn:hover { background: #2563EB; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.error { color: #EF4444; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+.loading { display: none; text-align: center; margin-top: 12px; font-size: 13px; color: #707088; }
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 40px; }
+.pw-toggle {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #606078; cursor: pointer; font-size: 18px;
+    padding: 4px; line-height: 1;
+}
+.pw-toggle:hover { color: #C0C0D0; }
+</style>
+</head>
+<body>
+<div class="card">
+    <h1>🔐 HOME-CLOUDE</h1>
+    <p class="sub">Masuk ke dashboard penyimpanan</p>
+    <div class="input-group">
+        <label>Username</label>
+        <input id="username" type="text" placeholder="Username" autocomplete="username" autofocus>
+    </div>
+    <div class="input-group">
+        <label>Password</label>
+        <div class="pw-wrap">
+            <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+            <button class="pw-toggle" onclick="togglePW()" tabindex="-1" type="button">👁</button>
+        </div>
+    </div>
+    <button class="btn" id="login-btn" onclick="doLogin()">Masuk</button>
+    <div class="error" id="error-msg"></div>
+    <div class="loading" id="loading-msg">⏳ Memeriksa...</div>
+</div>
+<script>
+const API = window.location.hostname || "192.168.2.162";
+const BASE = `http://${API}:3000/api`;
+
+function togglePW() {
+    const inp = document.getElementById('password');
+    const btn = document.querySelector('.pw-toggle');
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function doLogin() {
+    const username = document.getElementById('username').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+    if (!username || !password) { showError('Isi username dan password'); return; }
+    setLoading(true);
+    try {
+        const r = await fetch(`${BASE}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+        const d = await r.json();
+        if (d.success) {
+            localStorage.setItem("cloud_session_token", "authenticated_admin");
+            localStorage.setItem("cloud_username", username);
+            localStorage.setItem("cloud_password", password);
+            window.location.href = "index.html";
+        } else {
+            showError(d.message || "Login gagal");
+        }
+    } catch (e) {
+        showError("Koneksi ke server gagal");
+    }
+    setLoading(false);
+}
+
+function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = msg; el.style.display = 'block';
+}
+
+function setLoading(v) {
+    document.getElementById('login-btn').disabled = v;
+    document.getElementById('loading-msg').style.display = v ? 'block' : 'none';
+    document.getElementById('error-msg').style.display = 'none';
+}
+
+document.getElementById('username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('password').focus();
+});
+document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>
