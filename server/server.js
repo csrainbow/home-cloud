@@ -67,12 +67,27 @@ function formatGB(bytes) {
 
 function getStorageStats() {
     try {
-        const stats = fs.statfsSync(ABSOLUTE_HDD_DIR);
-        const total = Number(stats.bsize) * Number(stats.blocks);
-        const free = Number(stats.bsize) * Number(stats.bfree);
-        const used = total - free;
-        const percentage = parseFloat(((used / total) * 100).toFixed(1));
-        return { total, used, free, percentage, totalSpace: formatGB(total), usedSpace: formatGB(used), freeSpace: formatGB(free) };
+        if (typeof fs.statfsSync === 'function') {
+            const stats = fs.statfsSync(ABSOLUTE_HDD_DIR);
+            const total = Number(stats.bsize) * Number(stats.blocks);
+            const free = Number(stats.bsize) * Number(stats.bfree);
+            const used = total - free;
+            const percentage = parseFloat(((used / total) * 100).toFixed(1));
+            return { total, used, free, percentage, totalSpace: formatGB(total), usedSpace: formatGB(used), freeSpace: formatGB(free) };
+        } else {
+            const { execSync } = require('child_process');
+            const stdout = execSync(`df -B1 "${ABSOLUTE_HDD_DIR}"`, { encoding: 'utf8', timeout: 5000 });
+            const lines = stdout.trim().split('\n');
+            const parts = lines[lines.length - 1].split(/\s+/);
+            if (parts.length >= 4) {
+                const total = parseFloat(parts[1]) || 0;
+                const used = parseFloat(parts[2]) || 0;
+                const free = parseFloat(parts[3]) || 0;
+                const percentage = total > 0 ? parseFloat(((used / total) * 100).toFixed(1)) : 0;
+                return { total, used, free, percentage, totalSpace: formatGB(total), usedSpace: formatGB(used), freeSpace: formatGB(free) };
+            }
+            throw new Error('df parse error');
+        }
     } catch (e) {
         return { total: 0, used: 0, free: 0, percentage: 0, totalSpace: "0", usedSpace: "0", freeSpace: "0" };
     }
@@ -185,7 +200,11 @@ app.post('/api/media/upload', uploadEngine.single('file'), authMiddleware, (req,
 // ============================
 
 app.post('/api/media/delete-multiple', authMiddleware, (req, res) => {
-    const username = req.authenticatedUser;
+    let username = req.authenticatedUser;
+    const targetUser = req.query.targetUser || req.body.targetUser;
+    if (targetUser && username === 'admin') {
+        username = targetUser.toLowerCase().trim();
+    }
     const files = req.body.files || [];
     let deletedCount = 0;
 
@@ -210,7 +229,11 @@ app.post('/api/media/delete-multiple', authMiddleware, (req, res) => {
 // ============================
 
 app.post('/api/media/copy-multiple', authMiddleware, (req, res) => {
-    const username = req.authenticatedUser;
+    let username = req.authenticatedUser;
+    const targetUser = req.query.targetUser || req.body.targetUser;
+    if (targetUser && username === 'admin') {
+        username = targetUser.toLowerCase().trim();
+    }
     const files = req.body.files || [];
     const targetCategory = req.body.targetCategory || 'documents';
     const targetDir = path.join(ABSOLUTE_HDD_DIR, username, targetCategory);
@@ -240,7 +263,11 @@ app.post('/api/media/copy-multiple', authMiddleware, (req, res) => {
 // ============================
 
 app.post('/api/media/rename', authMiddleware, (req, res) => {
-    const username = req.authenticatedUser;
+    let username = req.authenticatedUser;
+    const targetUser = req.query.targetUser || req.body.targetUser;
+    if (targetUser && username === 'admin') {
+        username = targetUser.toLowerCase().trim();
+    }
     const { oldName, newName } = req.body;
     if (!oldName || !newName) {
         return res.status(400).json({ success: false, message: "oldName dan newName wajib diisi" });
@@ -268,7 +295,11 @@ app.post('/api/media/rename', authMiddleware, (req, res) => {
 // ============================
 
 app.post('/api/media/move', authMiddleware, (req, res) => {
-    const username = req.authenticatedUser;
+    let username = req.authenticatedUser;
+    const targetUser = req.query.targetUser || req.body.targetUser;
+    if (targetUser && username === 'admin') {
+        username = targetUser.toLowerCase().trim();
+    }
     const { files, targetCategory } = req.body;
     if (!files || !files.length || !targetCategory) {
         return res.status(400).json({ success: false, message: "files dan targetCategory wajib diisi" });

@@ -761,6 +761,9 @@
         function isSuperAdmin() {
             return getActiveCloudUsername() === "admin";
         }
+        function getTargetUserParam() {
+            return currentTargetUser && isSuperAdmin() ? `&targetUser=${encodeURIComponent(currentTargetUser)}` : '';
+        }
 
         function toggleSidebar() {
             const s = document.getElementById("app-sidebar"), o = document.getElementById("sidebar-overlay"), h = document.getElementById("hamburger-btn");
@@ -1024,7 +1027,7 @@
             toast.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-weight:700;">Penghapusan Berkas</span></div><div class="queue-item-row"><div style="font-size:12px;">🗑️ Memusnahkan berkas dari Harddisk...</div></div>`;
             const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
             try {
-                const r = await fetch(`${API_BASE}/media/delete-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,username:user,password:pass}) });
+                const r = await fetch(`${API_BASE}/media/delete-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}${getTargetUserParam()}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,username:user,password:pass,targetUser:currentTargetUser}) });
                 const d = await r.json();
                 toast.innerHTML = d.success ? '<div style="color:#2ECC71;padding:8px;">✅ Berkas berhasil dihapus!</div>' : '<div style="color:#EF5350;padding:8px;">❌ Gagal menghapus.</div>';
             } catch(e) { toast.innerHTML = '<div style="color:#EF5350;padding:8px;">❌ Gangguan koneksi.</div>'; }
@@ -1040,7 +1043,7 @@
             toast.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="font-weight:700;">Salin Berkas</span></div><div class="queue-item-row"><div style="font-size:12px;">📂 Menyalin berkas...</div></div>`;
             const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
             try {
-                await fetch(`${API_BASE}/media/copy-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,targetCategory:target,username:user,password:pass}) });
+                await fetch(`${API_BASE}/media/copy-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}${getTargetUserParam()}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,targetCategory:target,username:user,password:pass,targetUser:currentTargetUser}) });
                 toast.innerHTML = '<div style="color:#2ECC71;padding:8px;">✅ Berkas berhasil disalin!</div>';
             } catch(e) { toast.innerHTML = '<div style="color:#EF5350;padding:8px;">❌ Gagal menyalin.</div>'; }
             selectedFileNamesArray = []; updateFloatingActionBarVisibility(); loadDashboardGallery();
@@ -1160,10 +1163,10 @@
             const newName = prompt("Rename file:", f);
             if (!newName || newName === f) return;
             const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
-            fetch(`${API_BASE}/media/rename?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, {
+            fetch(`${API_BASE}/media/rename?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}${getTargetUserParam()}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ oldName: f, newName })
+                body: JSON.stringify({ oldName: f, newName, targetUser: currentTargetUser })
             }).then(r => r.json()).then(d => {
                 const t = document.getElementById("status-toast");
                 t.style.display = "block";
@@ -1209,10 +1212,10 @@
             if (!clipboardFiles.length) return;
             const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
             const endpoint = clipboardAction === 'cut' ? 'move' : 'copy-multiple';
-            fetch(`${API_BASE}/media/${endpoint}?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, {
+            fetch(`${API_BASE}/media/${endpoint}?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}${getTargetUserParam()}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ files: clipboardFiles, targetCategory })
+                body: JSON.stringify({ files: clipboardFiles, targetCategory, targetUser: currentTargetUser })
             }).then(r => r.json()).then(d => {
                 const t = document.getElementById("status-toast");
                 t.style.display = "block";
