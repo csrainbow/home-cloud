@@ -1,7 +1,6 @@
 package com.csrainbow.galerycloud.ui.viewmodel
 
 import android.app.Application
-import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -132,10 +131,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     val fileSize = withContext(Dispatchers.IO) {
                         contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
                     }
-                    if (fileSize > 104_857_600L) {
-                        Log.w("GalleryVM", "Skip large file (${fileSize / 1_000_000}MB): ${item.name}")
-                        continue
-                    }
                     val ok = withContext(Dispatchers.IO) {
                         val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
                         try {
@@ -190,10 +185,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
                     val fileSize = withContext(Dispatchers.IO) {
                         contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-                    }
-                    if (fileSize > 104_857_600L) { // > 100MB
-                        Log.w("GalleryVM", "Skip large file (${fileSize / 1_000_000}MB): ${item.name}")
-                        continue
                     }
                     val ok = withContext(Dispatchers.IO) {
                         val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
