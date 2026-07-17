@@ -123,23 +123,18 @@ fun GalleryScreen(
                                     ),
                                     label = "cloudRotation"
                                 )
-                                Box(modifier = Modifier.size(32.dp).rotate(if (isUploading) rotation else 0f)
-                                    .clickable { viewModel.uploadAllUnsynced() },
-                                    contentAlignment = Alignment.Center) {
+                                IconButton(
+                                    onClick = { viewModel.uploadAllUnsynced() },
+                                    modifier = Modifier.size(32.dp).rotate(if (isUploading) rotation else 0f),
+                                    enabled = !isUploading
+                                ) {
                                     Icon(
-                                        if (isUploading) Icons.Default.CloudUpload else Icons.Default.CloudQueue,
-                                        contentDescription = "Sync status",
+                                        if (isUploading) Icons.Default.Sync else Icons.Default.CloudUpload,
+                                        contentDescription = "Sync all",
                                         modifier = Modifier.size(20.dp),
                                         tint = if (isUploading) MaterialTheme.colorScheme.primary
                                                else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    if (isUploading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(28.dp),
-                                            strokeWidth = 2.dp,
-                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                        )
-                                    }
                                 }
                                 IconButton(onClick = onNavigateToSettings) {
                                     Icon(Icons.Default.Settings, contentDescription = "Settings",
