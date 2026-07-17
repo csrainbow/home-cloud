@@ -276,11 +276,13 @@ app.post('/api/media/rename', authMiddleware, (req, res) => {
     ['photos', 'videos', 'documents'].forEach(sub => {
         const oldPath = path.join(ABSOLUTE_HDD_DIR, username, sub, oldName);
         const newPath = path.join(ABSOLUTE_HDD_DIR, username, sub, newName);
-        if (fs.existsSync(oldPath)) {
+        const exists = fs.existsSync(oldPath);
+        console.log(`RENAME check: ${oldPath} exists=${exists}`);
+        if (exists) {
             try {
                 fs.renameSync(oldPath, newPath);
                 renamed = true;
-            } catch (e) { /* skip */ }
+            } catch (e) { console.log(`RENAME error: ${e.message}`); }
         }
     });
     if (renamed) {
