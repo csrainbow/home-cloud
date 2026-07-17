@@ -1,6 +1,7 @@
 package com.csrainbow.galerycloud.ui.viewmodel
 
 import android.app.Application
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -122,20 +123,33 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val baseUrl = "http://${settings.ip}:${settings.port}"
             var successCount = 0
             val total = selectedItems.size
+            val contentResolver = getApplication<Application>().contentResolver
 
             for ((idx, item) in selectedItems.withIndex()) {
                 _uploadProgress.value = "Uploading ${idx+1} of $total"
                 try {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
-                    val bytes = withContext(Dispatchers.IO) {
-                        getApplication<Application>().contentResolver.openInputStream(item.uri)?.use { it.readBytes() }
+                    val fileSize = withContext(Dispatchers.IO) {
+                        contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
                     }
-                    if (bytes != null) {
-                        val ok = apiService.uploadFile(baseUrl, settings.username, settings.password, item.name, bytes)
-                        if (ok) {
-                            syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                            successCount++
+                    if (fileSize > 104_857_600L) {
+                        Log.w("GalleryVM", "Skip large file (${fileSize / 1_000_000}MB): ${item.name}")
+                        continue
+                    }
+                    val ok = withContext(Dispatchers.IO) {
+                        val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
+                        try {
+                            apiService.uploadFileStreaming(
+                                baseUrl, settings.username, settings.password,
+                                item.name, fileSize, inputStream
+                            )
+                        } finally {
+                            inputStream.close()
                         }
+                    }
+                    if (ok) {
+                        syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                        successCount++
                     }
                 } catch (e: Exception) {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
@@ -157,7 +171,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return@launch
             }
             val allItems = _mediaItems.value.values.flatten()
-            // Filter items that are NOT already synced
             val unsynced = allItems.filter { it.syncStatus != SyncStatus.SYNCED }
             if (unsynced.isEmpty()) {
                 Toast.makeText(getApplication(), "Semua file sudah tersimpan", Toast.LENGTH_SHORT).show()
@@ -169,20 +182,33 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val baseUrl = "http://${settings.ip}:${settings.port}"
             var successCount = 0
             val total = unsynced.size
+            val contentResolver = getApplication<Application>().contentResolver
 
             for ((idx, item) in unsynced.withIndex()) {
                 _uploadProgress.value = "Uploading ${idx+1} of $total"
                 try {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
-                    val bytes = withContext(Dispatchers.IO) {
-                        getApplication<Application>().contentResolver.openInputStream(item.uri)?.use { it.readBytes() }
+                    val fileSize = withContext(Dispatchers.IO) {
+                        contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
                     }
-                    if (bytes != null) {
-                        val ok = apiService.uploadFile(baseUrl, settings.username, settings.password, item.name, bytes)
-                        if (ok) {
-                            syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                            successCount++
+                    if (fileSize > 104_857_600L) { // > 100MB
+                        Log.w("GalleryVM", "Skip large file (${fileSize / 1_000_000}MB): ${item.name}")
+                        continue
+                    }
+                    val ok = withContext(Dispatchers.IO) {
+                        val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
+                        try {
+                            apiService.uploadFileStreaming(
+                                baseUrl, settings.username, settings.password,
+                                item.name, fileSize, inputStream
+                            )
+                        } finally {
+                            inputStream.close()
                         }
+                    }
+                    if (ok) {
+                        syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                        successCount++
                     }
                 } catch (e: Exception) {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))

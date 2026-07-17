@@ -9,8 +9,9 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.serialization.json.Json
-import java.io.File
+import java.io.InputStream
 
 class GalleryApiService {
     private val client = HttpClient {
@@ -59,6 +60,27 @@ class GalleryApiService {
                         append("file", fileData, Headers.build {
                             append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
                         })
+                    }
+                ))
+            }
+            response.status.value == 200
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    suspend fun uploadFileStreaming(baseUrl: String, user: String, pass: String, fileName: String, fileSize: Long, inputStream: InputStream): Boolean {
+        return try {
+            val response = client.post("$baseUrl/api/media/upload") {
+                header("user", user)
+                header("pass", pass)
+                setBody(MultiPartFormDataContent(
+                    formData {
+                        append("file", fileSize, Headers.build {
+                            append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
+                        }) {
+                            ByteReadChannel(inputStream)
+                        }
                     }
                 ))
             }
