@@ -2,11 +2,16 @@
 set -e
 
 REPO="https://github.com/csrainbow/home-cloud.git"
+REPO_RAW="https://raw.githubusercontent.com/csrainbow/home-cloud/main"
 INSTALL_DIR="/root/home-cloud-server"
 
 echo "====================================="
 echo "  HOME CLOUD - One Click Install"
 echo "====================================="
+echo ""
+echo "  Repo : $REPO"
+echo "  Install: curl -fsSL $REPO_RAW/install.sh | bash"
+echo "  Uninstall: curl -fsSL $REPO_RAW/uninstall.sh | bash"
 echo ""
 
 # Minta lokasi penyimpanan file
@@ -47,6 +52,10 @@ else
 fi
 
 cd "$INSTALL_DIR"
+
+# Juga clone uninstall.sh
+cp "$INSTALL_DIR/uninstall.sh" /root/uninstall-home-cloud.sh 2>/dev/null || true
+chmod +x /root/uninstall-home-cloud.sh 2>/dev/null || true
 
 # Update path HDD di server.js
 echo "[3b/6] Menyesuaikan path penyimpanan di server.js..."
