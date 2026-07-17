@@ -49,6 +49,7 @@ class UploadWorker(
             unsyncedItems.forEach { item ->
                 try {
                     Log.d("UploadWorker", "Uploading: ${item.name}")
+                    dao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
                     val inputStream = applicationContext.contentResolver.openInputStream(item.uri)
                     val bytes = inputStream?.readBytes()
                     if (bytes != null) {

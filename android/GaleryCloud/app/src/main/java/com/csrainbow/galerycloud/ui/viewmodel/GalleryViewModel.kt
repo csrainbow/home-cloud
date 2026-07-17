@@ -119,6 +119,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
             for (item in selectedItems) {
                 try {
+                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
                     val bytes = withContext(Dispatchers.IO) {
                         getApplication<Application>().contentResolver.openInputStream(item.uri)?.use { it.readBytes() }
                     }
