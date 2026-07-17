@@ -2,7 +2,13 @@ package com.csrainbow.galerycloud.worker
 
 import android.content.Context
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
 import com.csrainbow.galerycloud.data.local.AppDatabase
 import com.csrainbow.galerycloud.data.local.SyncStatusEntity
 import com.csrainbow.galerycloud.data.repository.MediaRepository
@@ -24,6 +30,9 @@ class UploadWorker(
 
     override suspend fun doWork(): Result {
         Log.d("UploadWorker", "Starting sync job...")
+        createNotificationChannel()
+        setForeground(createForegroundInfo("Memulai sinkron..."))
+
         val db = AppDatabase.getDatabase(applicationContext)
         val dao = db.syncStatusDao()
         val repository = MediaRepository(applicationContext, dao)
@@ -81,5 +90,26 @@ class UploadWorker(
             Log.e("UploadWorker", "Critical worker failure", e)
             return Result.retry()
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "cloud_sync", "Cloud Sync", NotificationManager.IMPORTANCE_LOW
+            ).apply { setShowBadge(false) }
+            val nm = applicationContext.getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createForegroundInfo(text: String): ForegroundInfo {
+        val notification = NotificationCompat.Builder(applicationContext, "cloud_sync")
+            .setSmallIcon(android.R.drawable.ic_menu_upload)
+            .setContentTitle("Home Cloud")
+            .setContentText(text)
+            .setSilent(true)
+            .setOngoing(true)
+            .build()
+        return ForegroundInfo(1, notification)
     }
 }
