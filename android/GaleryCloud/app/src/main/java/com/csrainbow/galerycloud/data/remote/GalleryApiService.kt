@@ -9,8 +9,8 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.io.Buffer
 import kotlinx.serialization.json.Json
-import okio.Buffer
 import java.io.InputStream
 
 class GalleryApiService {
