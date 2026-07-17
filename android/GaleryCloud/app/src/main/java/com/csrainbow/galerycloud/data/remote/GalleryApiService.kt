@@ -10,8 +10,7 @@ import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
-import okio.Okio
-import okio.buffer
+import okio.Buffer
 import java.io.InputStream
 
 class GalleryApiService {
@@ -78,10 +77,13 @@ class GalleryApiService {
                 setBody(MultiPartFormDataContent(
                     formData {
                         append("file", filename = fileName, size = if (fileSize > 0) fileSize else null) {
-                            val source = Okio.source(inputStream)
-                            val sink = this.buffer()
-                            sink.writeAll(source)
-                            source.close()
+                            val buf = Buffer()
+                            val chunk = ByteArray(8192)
+                            var bytesRead: Int
+                            while (inputStream.read(chunk).also { bytesRead = it } != -1) {
+                                buf.write(chunk, 0, bytesRead)
+                                this.write(buf, bytesRead.toLong())
+                            }
                         }
                     }
                 ))
