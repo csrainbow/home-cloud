@@ -123,7 +123,8 @@ fun GalleryScreen(
                                     ),
                                     label = "cloudRotation"
                                 )
-                                Box(modifier = Modifier.size(32.dp).rotate(if (isUploading) rotation else 0f),
+                                Box(modifier = Modifier.size(32.dp).rotate(if (isUploading) rotation else 0f)
+                                    .clickable { viewModel.uploadAllUnsynced() },
                                     contentAlignment = Alignment.Center) {
                                     Icon(
                                         if (isUploading) Icons.Default.CloudUpload else Icons.Default.CloudQueue,

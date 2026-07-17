@@ -148,6 +148,52 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun uploadAllUnsynced() {
+        viewModelScope.launch {
+            val settings = settingsManager.serverSettings.first()
+            if (settings.ip.isEmpty() || settings.port.isEmpty()) {
+                Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            val allItems = _mediaItems.value.values.flatten()
+            // Filter items that are NOT already synced
+            val unsynced = allItems.filter { it.syncStatus != SyncStatus.SYNCED }
+            if (unsynced.isEmpty()) {
+                Toast.makeText(getApplication(), "Semua file sudah tersimpan", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            _isUploading.value = true
+            _uploadProgress.value = "Preparing..."
+            val baseUrl = "http://${settings.ip}:${settings.port}"
+            var successCount = 0
+            val total = unsynced.size
+
+            for ((idx, item) in unsynced.withIndex()) {
+                _uploadProgress.value = "Uploading ${idx+1} of $total"
+                try {
+                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
+                    val bytes = withContext(Dispatchers.IO) {
+                        getApplication<Application>().contentResolver.openInputStream(item.uri)?.use { it.readBytes() }
+                    }
+                    if (bytes != null) {
+                        val ok = apiService.uploadFile(baseUrl, settings.username, settings.password, item.name, bytes)
+                        if (ok) {
+                            syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                            successCount++
+                        }
+                    }
+                } catch (e: Exception) {
+                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
+                }
+            }
+
+            _uploadProgress.value = ""
+            Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
+            _isUploading.value = false
+        }
+    }
+
     fun deleteMedia(item: MediaItem) {
         viewModelScope.launch {
             val intentSender = repository.deleteMedia(listOf(item))
