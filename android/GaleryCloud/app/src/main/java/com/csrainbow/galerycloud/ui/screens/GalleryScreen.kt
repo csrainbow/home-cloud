@@ -125,13 +125,13 @@ fun GalleryScreen(
                                 )
                                 IconButton(
                                     onClick = { viewModel.uploadAllUnsynced() },
-                                    modifier = Modifier.size(32.dp).rotate(if (isUploading) rotation else 0f),
+                                    modifier = Modifier.size(32.dp),
                                     enabled = !isUploading
                                 ) {
                                     Icon(
                                         if (isUploading) Icons.Default.Sync else Icons.Default.CloudUpload,
                                         contentDescription = "Sync all",
-                                        modifier = Modifier.size(20.dp),
+                                        modifier = Modifier.size(20.dp).rotate(if (isUploading) rotation else 0f),
                                         tint = if (isUploading) MaterialTheme.colorScheme.primary
                                                else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
