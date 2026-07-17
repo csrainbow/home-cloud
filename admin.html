@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel — HOME-CLOUDE</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0A0A0C; color: #E8E8F0;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 20% 50%, rgba(59,130,246,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 40% at 80% 30%, rgba(139,92,246,0.04) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+        .admin-wrap {
+            position: relative; z-index: 1;
+            width: 100%; max-width: 720px;
+        }
+        .card {
+            background: rgba(18,18,22,0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .sub { color: #707088; font-size: 13px; margin-bottom: 24px; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: #3B82F6; text-decoration: none; font-size: 14px;
+            margin-bottom: 20px; transition: opacity 0.2s;
+        }
+        .back-link:hover { opacity: 0.7; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        th { color: #606078; font-size: 11px; letter-spacing: 0.5px; font-weight: 600; }
+        td { font-size: 14px; }
+        .actions { display: flex; gap: 8px; }
+        .btn {
+            padding: 8px 16px; border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #3B82F6; color: #fff; }
+        .btn-primary:hover { background: #2563EB; }
+        .btn-danger { background: #EF4444; color: #fff; }
+        .btn-danger:hover { background: #DC2626; }
+        .btn-ghost { background: rgba(255,255,255,0.04); color: #C0C0D0; }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .form-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .form-row input {
+            flex: 1; min-width: 140px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            padding: 10px 14px; border-radius: 10px; color: #E8E8F0; font-size: 14px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .form-row input:focus { border-color: #3B82F6; }
+        .form-row input::placeholder { color: #505068; }
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: rgba(18,18,22,0.95); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.06);
+            padding: 14px 20px; border-radius: 12px;
+            font-size: 14px; display: none;
+            animation: slideUp 0.3s ease;
+            z-index: 999;
+        }
+        .toast.success { border-color: #2ECC71; }
+        .toast.error { border-color: #EF4444; }
+        @keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-box {
+            background: rgba(18,18,22,0.95); backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px; padding: 28px; width: 90%; max-width: 400px;
+        }
+        .modal-box h3 { margin-bottom: 16px; }
+        .modal-box input {
+            width: 100%;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            padding: 10px 14px; border-radius: 10px; color: #E8E8F0; font-size: 14px;
+            outline: none; margin-bottom: 16px;
+        }
+        .modal-box input:focus { border-color: #3B82F6; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+        .pw-wrap { position: relative; display: flex; align-items: center; }
+        .pw-wrap input { width: 100%; padding-right: 40px; }
+        .pw-toggle {
+            position: absolute; right: 10px; background: none; border: none;
+            color: #606078; cursor: pointer; font-size: 18px; padding: 4px;
+            line-height: 1; transition: color 0.2s;
+        }
+        .pw-toggle:hover { color: #C0C0D0; }
+    </style>
+</head>
+<body>
+    <div class="admin-wrap">
+        <a class="back-link" href="index.html">← Kembali ke Dashboard</a>
+        <div class="card">
+            <h1>👑 Super Admin</h1>
+            <p class="sub">Kelola pengguna dan password</p>
+
+            <h3 style="font-size:14px;color:#8888A0;margin-bottom:12px;">Tambah User Baru</h3>
+            <div class="form-row">
+                <input id="new-username" placeholder="Username" autocomplete="off">
+                <div class="pw-wrap">
+                    <input id="new-password" type="password" placeholder="Password">
+                    <button class="pw-toggle" onclick="togglePW('new-password',this)" tabindex="-1">👁</button>
+                </div>
+                <button class="btn btn-primary" onclick="addUser()">Tambah</button>
+            </div>
+
+            <table>
+                <thead><tr><th>USERNAME</th><th>PASSWORD</th><th style="text-align:right;">AKSI</th></tr></thead>
+                <tbody id="user-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="password-modal">
+        <div class="modal-box">
+            <h3>Ganti Password</h3>
+            <p style="font-size:13px;color:#707088;margin-bottom:12px;" id="password-modal-user"></p>
+            <div class="pw-wrap">
+                <input id="edit-password" type="password" placeholder="Password baru">
+                <button class="pw-toggle" onclick="togglePW('edit-password',this)" tabindex="-1">👁</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closePasswordModal()">Batal</button>
+                <button class="btn btn-primary" id="password-save-btn" onclick="savePassword()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API = window.location.hostname || "192.168.2.162";
+        const BASE = `http://${API}:3000/api`;
+        let editingUser = null;
+
+        function togglePW(id, btn) {
+            const inp = document.getElementById(id);
+            if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+            else { inp.type = 'password'; btn.textContent = '👁'; }
+        }
+        function revealPW(username, password, btn) {
+            const span = document.getElementById('pw-' + username);
+            if (span.dataset.revealed === '1') {
+                span.textContent = '••••••••';
+                span.dataset.revealed = '0';
+                btn.textContent = '👁';
+            } else {
+                span.textContent = password;
+                span.dataset.revealed = '1';
+                btn.textContent = '🙈';
+            }
+        }
+
+        if (localStorage.getItem("cloud_session_token") !== "authenticated_admin" || localStorage.getItem("cloud_username") !== "admin") {
+            window.location.href = "login.html";
+        }
+
+        function toast(msg, type = "success") {
+            const t = document.getElementById("toast");
+            t.textContent = msg; t.className = "toast " + type; t.style.display = "block";
+            setTimeout(() => t.style.display = "none", 3000);
+        }
+
+        async function loadUsers() {
+            try {
+                const r = await fetch(`${BASE}/admin/users?username=admin&pass=admin`);
+                const d = await r.json();
+                if (!d.success) { toast("Gagal load users", "error"); return; }
+                const tbody = document.getElementById("user-table-body");
+                tbody.innerHTML = d.users.map(u => `
+                    <tr>
+                        <td>${u.username}</td>
+                        <td>
+                            <span style="display:inline-flex;align-items:center;gap:6px;">
+                                <span id="pw-${u.username}" style="font-family:monospace;font-size:13px;">••••••••</span>
+                                <button class="pw-toggle" style="position:static;font-size:16px;" onclick="revealPW('${u.username}','${u.password.replace(/'/g, "\\'")}',this)" tabindex="-1">👁</button>
+                            </span>
+                        </td>
+                        <td style="text-align:right;">
+                            <div class="actions" style="justify-content:flex-end;">
+                                <button class="btn btn-ghost btn-sm" onclick="openPasswordModal('${u.username}')">🔑 Ganti Password</button>
+                                ${u.username !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.username}')">🗑 Hapus</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `).join("");
+            } catch (e) { toast("Koneksi gagal", "error"); }
+        }
+
+        async function addUser() {
+            const username = document.getElementById("new-username").value.trim().toLowerCase();
+            const password = document.getElementById("new-password").value.trim();
+            if (!username || !password) { toast("Username & password harus diisi", "error"); return; }
+            try {
+                const r = await fetch(`${BASE}/auth/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+                const d = await r.json();
+                if (d.success) {
+                    toast(`User ${username} berhasil dibuat`);
+                    document.getElementById("new-username").value = "";
+                    document.getElementById("new-password").value = "";
+                    loadUsers();
+                } else {
+                    toast(d.message, "error");
+                }
+            } catch (e) { toast("Koneksi gagal", "error"); }
+        }
+
+        function openPasswordModal(username) {
+            editingUser = username;
+            document.getElementById("password-modal-user").textContent = "Ganti password untuk: " + username;
+            document.getElementById("edit-password").value = "";
+            document.getElementById("password-modal").style.display = "flex";
+        }
+
+        function closePasswordModal() {
+            document.getElementById("password-modal").style.display = "none";
+            editingUser = null;
+        }
+
+        async function savePassword() {
+            if (!editingUser) return;
+            const password = document.getElementById("edit-password").value.trim();
+            if (!password) { toast("Password baru harus diisi", "error"); return; }
+            try {
+                const r = await fetch(`${BASE}/admin/users/${encodeURIComponent(editingUser)}?username=admin&pass=admin`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password })
+                });
+                const d = await r.json();
+                if (d.success) { toast(d.message); loadUsers(); closePasswordModal(); }
+                else { toast(d.message, "error"); }
+            } catch (e) { toast("Koneksi gagal", "error"); }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Hapus user "${username}"?`)) return;
+            try {
+                const r = await fetch(`${BASE}/admin/users/${encodeURIComponent(username)}?username=admin&pass=admin`, { method: "DELETE" });
+                const d = await r.json();
+                if (d.success) { toast(d.message); loadUsers(); }
+                else { toast(d.message, "error"); }
+            } catch (e) { toast("Koneksi gagal", "error"); }
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

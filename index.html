@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOME-CLOUDE</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0A0A0C;
+            color: #E8E8F0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 80% 80%, rgba(139,92,246,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(16,185,129,0.04) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== SCROLLBAR STYLING ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2A2A32; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3A3A45; }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeSlideUp { 0% { opacity: 0; transform: translateY(30px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes scaleIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes glassReveal { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(20px); } }
+        @keyframes slideUp { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        @keyframes slideInRight { 0% { transform: translateX(80px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+        @keyframes toastSlide { 0% { transform: translateX(120%) scale(0.9); opacity: 0; } 100% { transform: translateX(0) scale(1); opacity: 1; } }
+        @keyframes shimmer { 0% { background-position: -600px 0; } 100% { background-position: 600px 0; } }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes orbit { 0% { transform: rotate(0deg) translateX(8px) rotate(0deg); } 100% { transform: rotate(360deg) translateX(8px) rotate(-360deg); } }
+        @keyframes floatSlow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes borderGlow { 0%, 100% { border-color: rgba(59,130,246,0.2); } 50% { border-color: rgba(59,130,246,0.6); } }
+        @keyframes bgShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        /* ===== SIDEBAR — GLASS MORPHISM ===== */
+        .sidebar {
+            width: 260px;
+            background: rgba(18,18,22,0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 16px;
+            position: relative;
+            z-index: 100;
+            transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), margin-left 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+            flex-shrink: 0;
+        }
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+            margin-left: -260px;
+        }
+        /* Sidebar collapse toggle button */
+        .sidebar-toggle {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            cursor: pointer;
+            width: 38px; height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            color: #8888A0;
+            font-size: 16px;
+        }
+        .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.08);
+            color: #E0E0F0;
+            border-color: rgba(255,255,255,0.12);
+        }
+        .sidebar-toggle.collapsed {
+            transform: rotate(180deg);
+        }
+        /* Force sidebar hidden on mobile when overlay not shown */
+        @media (max-width: 768px) {
+            .sidebar:not(.open) { transform: translateX(-100%); margin-left: -260px; }
+            .sidebar.open { transform: translateX(0); margin-left: 0; }
+        }
+        .sidebar::after {
+            content: '';
+            position: absolute;
+            top: 0; right: -1px;
+            width: 1px;
+            height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(59,130,246,0.3), transparent);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 36px;
+            padding: 0 8px;
+        }
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+        }
+        .brand span {
+            font-weight: 700;
+            font-size: 17px;
+            background: linear-gradient(135deg, #F0F0F8, #A0A0C0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .menu-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #8888A0;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+        }
+        .menu-item:hover { color: #E0E0F0; background: rgba(255,255,255,0.05); transform: translateX(4px); }
+        .menu-item.active {
+            color: #FFF;
+            background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1));
+            border: 1px solid rgba(59,130,246,0.15);
+        }
+        .menu-item:active { transform: scale(0.97); }
+        .menu-section-label { font-size: 10px; color: #505068; padding: 16px 18px 6px; letter-spacing: 1px; font-weight: 700; }
+        .menu-user-item {
+            display: flex; align-items: center; gap: 10px; padding: 8px 18px; margin: 0 8px; border-radius: 10px;
+            font-size: 13px; font-weight: 500; color: #8888A0; cursor: pointer; transition: all 0.25s;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .menu-user-item:hover { color: #E0E0F0; background: rgba(255,255,255,0.05); }
+        .menu-user-item.active { color: #E0E0F0; background: rgba(59,130,246,0.12); }
+
+        .ctx-menu {
+            position: fixed; z-index: 2000; min-width: 180px;
+            background: rgba(22,22,28,0.96); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 6px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            display: none; overflow: hidden;
+        }
+        .ctx-menu.show { display: block; animation: fadeSlideUp 0.15s ease; }
+        .ctx-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 14px; border-radius: 8px;
+            font-size: 13px; color: #C0C0D0; cursor: pointer;
+            transition: all 0.15s; border: none; background: none;
+            width: 100%; text-align: left; font-family: inherit;
+        }
+        .ctx-item:hover { background: rgba(255,255,255,0.06); color: #E8E8F0; }
+        .ctx-item.danger { color: #EF4444; }
+        .ctx-item.danger:hover { background: rgba(239,68,68,0.12); }
+        .ctx-divider { height: 1px; background: rgba(255,255,255,0.04); margin: 4px 8px; }
+
+        .storage-card {
+            margin-top: auto;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            padding: 18px;
+            border-radius: 16px;
+            transition: all 0.3s;
+        }
+        .storage-card:hover { border-color: rgba(59,130,246,0.2); }
+        .storage-bar-wrap {
+            width: 100%; height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px; overflow: hidden;
+            margin: 8px 0;
+        }
+        .storage-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+            border-radius: 10px;
+            transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
+            position: relative;
+        }
+        .storage-bar-fill::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            animation: shimmer 2s infinite;
+        }
+        .storage-used { font-size: 13px; color: #E0E0F0; font-weight: 600; }
+        .storage-total { font-size: 10px; color: #606078; }
+        .storage-percent { font-size: 11px; color: #8B5CF6; font-weight: 700; }
+
+        /* ===== HAMBURGER ===== */
+        .hamburger-btn { display: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); cursor: pointer; width: 38px; height: 38px; flex-direction: column; justify-content: center; align-items: center; gap: 5px; border-radius: 12px; transition: all 0.3s; }
+        .hamburger-btn:hover { background: rgba(255,255,255,0.08); }
+        .hamburger-btn span { display: block; width: 18px; height: 2px; background: #C0C0D0; border-radius: 4px; transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .hamburger-btn.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); width: 20px; }
+        .hamburger-btn.active span:nth-child(2) { opacity: 0; transform: translateX(-12px); }
+        .hamburger-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); width: 20px; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; transition: opacity 0.35s; }
+        .sidebar-overlay.show { display: block; opacity: 1; }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            scrollbar-gutter: stable;
+            position: relative;
+            z-index: 1;
+        }
+        .top-bar {
+            height: 80px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            background: rgba(10,10,12,0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .top-bar-left { display: flex; align-items: center; gap: 16px; }
+        #page-title {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            background: linear-gradient(135deg, #F0F0F8, #B0B0C8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gallery-container { padding: 40px 32px 28px; flex: 1; min-height: 200px; }
+
+        /* ===== TIMELINE ===== */
+        .timeline-section { margin-bottom: 36px; }
+        .timeline-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #8888A0;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 16px;
+            padding-left: 4px;
+        }
+        .timeline-header::before {
+            content: '';
+            width: 3px;
+            height: 16px;
+            background: linear-gradient(180deg, #3B82F6, #8B5CF6);
+            border-radius: 4px;
+        }
+
+        /* ===== GRID — FLUID MASONRY ===== */
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 14px;
+        }
+
+        /* ===== MEDIA CARD — GLASS + DEPTH ===== */
+        .media-card {
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            background: rgba(22,22,28,0.7);
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .media-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.05), transparent 50%);
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        .media-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            border-color: rgba(59,130,246,0.25);
+            box-shadow:
+                0 20px 50px rgba(0,0,0,0.5),
+                0 0 0 1px rgba(59,130,246,0.1) inset;
+        }
+        .media-card:hover::before { opacity: 1; }
+        .media-card:active { transform: scale(0.96); }
+        .media-card.selected {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.2), 0 12px 30px rgba(0,0,0,0.4);
+        }
+        .card-checkbox {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 22px; height: 22px;
+            cursor: pointer;
+            z-index: 10;
+            accent-color: #3B82F6;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .media-card:hover .card-checkbox { opacity: 1; transform: scale(1); }
+        .card-checkbox:checked { opacity: 1; transform: scale(1); }
+        .media-card img, .media-card video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .media-card:hover img, .media-card:hover video { transform: scale(1.12); }
+        .video-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            color: #FFF;
+            pointer-events: none;
+            border: 1px solid rgba(255,255,255,0.08);
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        /* ===== FLOATING ACTION BAR — GLASS ===== */
+        .floating-menu {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            background: rgba(18,18,22,0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 10px 20px;
+            border-radius: 28px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 16px 50px rgba(0,0,0,0.6);
+            z-index: 999;
+            animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .floating-text {
+            font-size: 13px;
+            color: #A0A0B8;
+            font-weight: 600;
+            padding-right: 14px;
+            border-right: 1px solid rgba(255,255,255,0.06);
+        }
+        .float-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            color: #B0B0C8;
+            position: relative;
+        }
+        .float-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .float-btn:hover { color: #FFF; transform: translateY(-3px); }
+        .float-btn:hover::before { opacity: 1; }
+        .float-btn:active { transform: scale(0.85); }
+
+        /* ===== LIGHTBOX — CINEMATIC ===== */
+        .lightbox-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(5,5,8,0.96);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            user-select: none;
+        }
+        .lightbox-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 48px;
+        }
+        .lightbox-content {
+            max-width: 88%;
+            max-height: 84%;
+            object-fit: contain;
+            border-radius: 12px;
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            animation: scaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+        .nav-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10002;
+            font-size: 20px;
+            transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .nav-arrow:hover {
+            color: #FFF;
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.15);
+            transform: translateY(-50%) scale(1.1);
+        }
+        .arrow-left { left: 28px; }
+        .arrow-right { right: 28px; }
+        .lightbox-close {
+            position: absolute;
+            top: 24px;
+            right: 28px;
+            font-size: 18px;
+            color: #8888A0;
+            cursor: pointer;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10003;
+            transition: all 0.35s;
+        }
+        .lightbox-close:hover { color: #FFF; background: rgba(255,255,255,0.08); transform: rotate(90deg) scale(1.1); }
+        .video-player-container {
+            width: 78%;
+            aspect-ratio: 16/9;
+            background: #000;
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+        .video-player-container video { width: 100%; height: 100%; object-fit: contain; }
+
+        /* ===== MODALS ===== */
+        .copy-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10500;
+        }
+        .copy-box {
+            background: rgba(18,18,22,0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 28px;
+            border-radius: 24px;
+            width: 360px;
+            animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+        }
+        .copy-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; color: #F0F0F8; }
+        .folder-option {
+            padding: 14px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #C0C0D0;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .folder-option:hover {
+            background: rgba(59,130,246,0.08);
+            border-color: rgba(59,130,246,0.2);
+            transform: translateX(6px);
+            color: #FFF;
+        }
+
+        /* ===== TOAST PANEL ===== */
+        #status-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(16,16,22,0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: #E8E8F0;
+            padding: 20px;
+            border-radius: 20px;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.06);
+            width: 380px;
+            max-height: 420px;
+            overflow-y: auto;
+            z-index: 9999;
+        }
+        #status-toast[style*="block"] { animation: toastSlide 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .queue-item-row {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .queue-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #3B82F6, #60A5FA, #8B5CF6);
+            background-size: 200% 100%;
+            animation: bgShift 2s ease infinite;
+            width: 0%;
+            transition: width 0.15s ease;
+            border-radius: 10px;
+        }
+
+        /* ===== SKELETON ===== */
+        .skeleton-card {
+            aspect-ratio: 1 / 1;
+            border-radius: 18px;
+            background: linear-gradient(90deg, rgba(22,22,28,0.6) 25%, rgba(32,32,40,0.6) 50%, rgba(22,22,28,0.6) 75%);
+            background-size: 600px 100%;
+            animation: shimmer 1.8s ease-in-out infinite;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .media-grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; }
+            .gallery-container { padding: 28px 24px; }
+            .top-bar { padding: 0 24px; height: 72px; }
+        }
+        @media (max-width: 768px) {
+            .hamburger-btn { display: flex; }
+            .sidebar:not(.open) { position: fixed; top: 0; left: 0; height: 100%; z-index: 100; background: rgba(10,10,14,0.95); }
+            .sidebar.open { position: fixed; top: 0; left: 0; height: 100%; z-index: 100; background: rgba(10,10,14,0.95); transform: translateX(0); margin-left: 0; }
+            .top-bar { padding: 0 18px; height: 68px; }
+            .gallery-container { padding: 20px 18px; }
+            .media-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .floating-menu { bottom: 18px; right: 18px; left: 18px; justify-content: center; border-radius: 24px; }
+            #status-toast { width: calc(100% - 36px); left: 18px; right: 18px; }
+            .lightbox-wrapper { padding: 20px; }
+            .nav-arrow { width: 40px; height: 40px; font-size: 16px; }
+            .arrow-left { left: 12px; }
+            .arrow-right { right: 12px; }
+            .video-player-container { width: 95%; }
+            .copy-box { width: calc(100% - 40px); max-width: 360px; }
+            .top-bar .upload-group { gap: 8px !important; }
+            .top-bar .upload-group button { padding: 8px 14px !important; font-size: 13px !important; }
+        }
+        @media (max-width: 480px) {
+            .media-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .gallery-container { padding: 16px 14px; }
+            #page-title { font-size: 13px !important; }
+            .top-bar .logout-text { display: none; }
+        .user-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: #fff;
+            flex-shrink: 0; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.22,1,0.36,1);
+            box-shadow: 0 2px 12px rgba(59,130,246,0.3);
+        }
+        .user-avatar:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(59,130,246,0.5); }
+            .floating-menu { padding: 8px 14px; gap: 6px; }
+            .float-btn { width: 34px; height: 34px; font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <div class="sidebar" id="app-sidebar">
+        <div class="brand">
+            <img src="logo.png" alt="Logo" style="height:34px;">
+            <span style="font-weight: 700; font-size: 17px; background: linear-gradient(135deg, #F0F0F8, #A0A0C0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;"></span>
+        </div>
+        <ul class="menu-list">
+            <li class="menu-item active" id="menu-home" onclick="switchMenu('home')">🏠 Home</li>
+            <li class="menu-item" id="menu-photos" onclick="switchMenu('photos')">🖼️ Photos</li>
+            <li class="menu-item" id="menu-videos" onclick="switchMenu('videos')">🎬 Videos</li>
+            <li class="menu-item" id="menu-documents" onclick="switchMenu('documents')">📁 Library Documents</li>
+            <li class="menu-item" id="menu-admin" style="border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;padding-top:8px;display:none;" onclick="window.location.href='admin.html'">👑 Admin Panel</li>
+            <div id="users-section" class="menu-section-label" style="display:none;">AKUN PENGGUNA</div>
+            <div id="users-list"></div>
+        </ul>
+        <div class="storage-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-size:12px;color:#8888A0;font-weight:600;letter-spacing:0.5px;">STORAGE</span>
+                <span class="storage-percent" id="storage-percent">0%</span>
+            </div>
+            <div class="storage-bar-wrap">
+                <div class="storage-bar-fill" id="storage-progress" style="width:0%;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                <span class="storage-used" id="storage-used">0 GB</span>
+                <span class="storage-total" id="storage-total">0 GB total</span>
+            </div>
+        </div>
+        <div id="server-status" style="display:flex;align-items:center;gap:8px;padding:12px 18px;margin-top:8px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.04);">
+            <span id="server-dot" style="width:8px;height:8px;border-radius:50%;background:#2ECC71;display:inline-block;box-shadow:0 0 8px rgba(46,204,113,0.4);animation:pulse 2s ease-in-out infinite;"></span>
+            <span style="font-size:12px;color:#707088;font-weight:500;">Server Online</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="top-bar-left">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Buka menu">
+                    <span></span><span></span><span></span>
+                </button>
+                <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Sembunyikan sidebar">◀</button>
+                <h2 id="page-title">HOME CLOUD MAIN HUB</h2>
+            </div>
+            <div class="upload-group" style="display:flex;gap:12px;align-items:center;">
+                <input type="file" id="file-picker" multiple style="display:none;" onchange="executeFileUpload(this)">
+                <button onclick="document.getElementById('file-picker').click()" style="background:linear-gradient(135deg,#3B82F6,#5B5CF6);color:white;border:none;padding:10px 22px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s cubic-bezier(0.22,1,0.36,1);box-shadow:0 4px 20px rgba(59,130,246,0.25);" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 30px rgba(59,130,246,0.35)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 20px rgba(59,130,246,0.25)'">⬆️ Upload</button>
+                <button onclick="executeLogout()" id="logout-btn" style="background:rgba(255,255,255,0.04);color:#C0C0D0;border:1px solid rgba(255,255,255,0.06);padding:10px 18px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s cubic-bezier(0.22,1,0.36,1);display:flex;align-items:center;gap:10px;" onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='rgba(255,255,255,0.15)'" onmouseout="this.style.transform='';this.style.borderColor='rgba(255,255,255,0.06)'"><div class="user-avatar" id="user-avatar"></div><span class="logout-text">Keluar</span></button>
+            </div>
+        </div>
+        <div class="gallery-container">
+            <div id="gallery-timeline-root"></div>
+        </div>
+
+        <div id="floating-action-bar" class="floating-menu">
+            <span id="selected-count-text" class="floating-text">0 Terpilih</span>
+            <button class="float-btn" onclick="executeMassDownload()" title="Unduh Massal">📥</button>
+            <button class="float-btn" onclick="openCopyModal()" title="Salin Berkas">📋</button>
+            <button class="float-btn" onclick="openDeleteModal()" title="Hapus Permanen" style="color:#EF5350;">❌</button>
+        </div>
+    </div>
+
+    <div id="lightbox-viewer" class="lightbox-modal">
+        <button class="lightbox-close" onclick="closeLightboxViewer()">✕</button>
+        <button class="nav-arrow arrow-left" onclick="navigateLightbox(-1)">◀</button>
+        <button class="nav-arrow arrow-right" onclick="navigateLightbox(1)">▶</button>
+        <div class="lightbox-wrapper" onclick="closeLightboxViewer()">
+            <img id="lightbox-img" class="lightbox-content" style="display:none;" alt="" onclick="event.stopPropagation()">
+            <div id="lightbox-video-box" class="video-player-container" style="display:none;" onclick="event.stopPropagation()">
+                <video id="lightbox-video" controls controlslist="nodownload" playsinline></video>
+            </div>
+        </div>
+    </div>
+
+    <div id="copy-action-modal" class="copy-modal" onclick="closeCopyModalOutside(event)">
+        <div class="copy-box">
+            <div class="copy-title">Salin Berkas Terpilih Ke:</div>
+            <div class="folder-option" onclick="submitCopyAction('photos')">🖼️ Folder Photos</div>
+            <div class="folder-option" onclick="submitCopyAction('videos')">🎬 Folder Videos</div>
+            <div class="folder-option" onclick="submitCopyAction('documents')">📁 Folder Library Documents</div>
+            <button onclick="closeCopyModal()" style="background:rgba(255,255,255,0.04);color:#C0C0D0;width:100%;border:1px solid rgba(255,255,255,0.06);padding:12px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;margin-top:12px;transition:all 0.3s;">Batal</button>
+        </div>
+    </div>
+
+    <div id="delete-action-modal" class="copy-modal" onclick="closeDeleteModalOutside(event)">
+        <div class="copy-box" style="border:1px solid rgba(239,83,80,0.3);">
+            <div class="copy-title" style="color:#EF5350;">🛑 Hapus Berkas Permanen</div>
+            <div id="delete-modal-msg" style="font-size:13px;color:#9090A8;margin-bottom:20px;line-height:1.6;">Apakah Anda yakin?</div>
+            <div style="display:flex;gap:10px;">
+                <button onclick="executeMassPermanentDelete()" style="background:linear-gradient(135deg,#EF5350,#E04040);color:white;flex:1;border:none;padding:12px;border-radius:14px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s;">Ya, Hapus</button>
+                <button onclick="closeDeleteModal()" style="background:rgba(255,255,255,0.04);color:#C0C0D0;flex:1;border:1px solid rgba(255,255,255,0.06);padding:12px;border-radius:14px;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s;">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ctx-menu" class="ctx-menu">
+        <button class="ctx-item" onclick="ctxDownload()">⬇️ Download</button>
+        <button class="ctx-item" onclick="ctxCopyPath()">🔗 Copy Path</button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item" onclick="ctxCopy()">📋 Copy</button>
+        <button class="ctx-item" onclick="ctxCut()">✂️ Cut</button>
+        <button class="ctx-item" onclick="ctxRename()">✏️ Rename</button>
+        <div class="ctx-divider"></div>
+        <button class="ctx-item danger" onclick="ctxDelete()">🗑️ Delete</button>
+    </div>
+
+    <div id="status-toast"></div>
+
+    <script>
+        const currentHost = window.location.hostname || "192.168.2.162";
+        const API_BASE = `http://${currentHost}:3000/api`;
+        const STREAM_BASE = `http://${currentHost}:3000`;
+
+        if (localStorage.getItem("cloud_session_token") !== "authenticated_admin") {
+            window.location.href = "login.html";
+        }
+
+        let currentActiveMenu = "home", currentTargetUser = null, allMediaItemsArray = [], selectedFileNamesArray = [], activeLightboxIndex = 0;
+
+        function getActiveCloudUsername() {
+            return localStorage.getItem("cloud_username") || "admin";
+        }
+        function getActiveCloudPassword() {
+            return localStorage.getItem("cloud_password") || "admin";
+        }
+        function isSuperAdmin() {
+            return getActiveCloudUsername() === "admin";
+        }
+
+        function toggleSidebar() {
+            const s = document.getElementById("app-sidebar"), o = document.getElementById("sidebar-overlay"), h = document.getElementById("hamburger-btn");
+            if (s.classList.contains("open")) { closeSidebar(); return; }
+            s.classList.remove("closing"); s.classList.add("open"); o.classList.add("show"); h.classList.add("active");
+        }
+        function closeSidebar() {
+            const s = document.getElementById("app-sidebar"), o = document.getElementById("sidebar-overlay"), h = document.getElementById("hamburger-btn");
+            s.classList.remove("open"); s.classList.add("closing"); o.classList.remove("show"); h.classList.remove("active");
+            setTimeout(() => s.classList.remove("closing"), 350);
+        }
+        /* Sidebar collapse toggle untuk desktop */
+        function toggleSidebarCollapse() {
+            const s = document.getElementById("app-sidebar"), btn = document.getElementById("sidebar-toggle-btn");
+            s.classList.toggle("collapsed");
+            btn.classList.toggle("collapsed");
+            btn.title = s.classList.contains("collapsed") ? "Tampilkan sidebar" : "Sembunyikan sidebar";
+        }
+        /* Auto-hide sidebar saat klik di area konten (desktop & mobile) */
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById("app-sidebar");
+            const toggleBtn = document.getElementById("sidebar-toggle-btn");
+            const hamburger = document.getElementById("hamburger-btn");
+            if (window.innerWidth > 768) {
+                if (!sidebar.contains(e.target) && !toggleBtn.contains(e.target) && !hamburger.contains(e.target)) {
+                    if (!sidebar.classList.contains("collapsed")) {
+                        sidebar.classList.add("collapsed");
+                        toggleBtn.classList.add("collapsed");
+                        toggleBtn.title = "Tampilkan sidebar";
+                    }
+                }
+            }
+        });
+        /* Pastikan sidebar toggle muncul di desktop saja */
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById("sidebar-toggle-btn");
+            function updateToggleVisibility() {
+                btn.style.display = window.innerWidth <= 768 ? 'none' : 'flex';
+            }
+            updateToggleVisibility();
+            window.addEventListener('resize', updateToggleVisibility);
+        });
+
+        async function fetchStorageStatus() {
+            try {
+                const u = getActiveCloudUsername(), p = getActiveCloudPassword();
+                const r = await fetch(`${API_BASE}/auth/storage?username=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}`);
+                const d = await r.json();
+                if (d.success || d.status === "success") {
+                    document.getElementById("storage-progress").style.width = `${d.percentage}%`;
+                    document.getElementById("storage-percent").innerText = `${d.percentage}%`;
+                    document.getElementById("storage-used").innerText = `${d.usedSpace} GB digunakan`;
+                    document.getElementById("storage-total").innerText = `${d.totalSpace} GB total`;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function switchMenu(menuType) {
+            currentActiveMenu = menuType; selectedFileNamesArray = []; updateFloatingActionBarVisibility();
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.menu-user-item').forEach(i => i.classList.remove('active'));
+            const a = document.getElementById(`menu-${menuType}`); if (a) a.classList.add('active');
+            if (menuType === 'home') currentTargetUser = null;
+            const t = { home: "HOME CLOUD MAIN HUB", photos: "PHOTOS ALBUM FROM DEVICE", videos: "VIDEOS STORAGE HUB", documents: "LIBRARY DOCUMENTS ARCHIVE" };
+            let title = t[menuType] || "LIBRARY MILIK ADMIN";
+            if (currentTargetUser) title = `📁 ${currentTargetUser.toUpperCase()} — ${menuType.toUpperCase()}`;
+            document.getElementById("page-title").innerText = title;
+            loadDashboardGallery();
+            if (window.innerWidth <= 768) closeSidebar();
+        }
+
+        function renderSkeleton(root) {
+            let h = '';
+            for (let i = 0; i < 6; i++) h += `<div class="skeleton-card" style="animation-delay:${i*0.08}s"></div>`;
+            root.innerHTML = `<div class="media-grid">${h}</div>`;
+        }
+
+        async function loadDashboardGallery() {
+            const root = document.getElementById("gallery-timeline-root");
+            renderSkeleton(root);
+            try {
+                const u = getActiveCloudUsername(), p = getActiveCloudPassword();
+                let url = `${API_BASE}/media/list?category=${currentActiveMenu}&username=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}`;
+                if (currentTargetUser) url += `&targetUser=${encodeURIComponent(currentTargetUser)}`;
+                const r = await fetch(url);
+                const d = await r.json();
+                root.innerHTML = ""; allMediaItemsArray = [];
+                if (!d.timeline || d.timeline.length === 0) {
+                    root.innerHTML = '<div style="color:#606078;text-align:center;padding:80px 0;font-weight:500;animation:fadeSlideUp 0.6s ease;">✨ No items found in this section</div>';
+                    return;
+                }
+                d.timeline.forEach(g => { g.items.forEach(f => { allMediaItemsArray.push(f); }); });
+                d.timeline.forEach((group, gi) => {
+                    const sec = document.createElement("div"); sec.className = "timeline-section";
+                    sec.style.animation = `fadeSlideUp 0.5s ease ${gi*0.1}s backwards`;
+                    const hdr = document.createElement("div"); hdr.className = "timeline-header";
+                    const cb = document.createElement("input"); cb.type = "checkbox";
+                    cb.id = `gchk-${gi}`;
+                    cb.style.cssText = "cursor:pointer;accent-color:#3B82F6;width:14px;height:14px;";
+                    cb.onclick = () => toggleSelectAllGroup(gi, group.items, cb.checked);
+                    const ht = document.createElement("span"); ht.innerText = group.title;
+                    hdr.appendChild(cb); hdr.appendChild(ht); sec.appendChild(hdr);
+                    const grid = document.createElement("div"); grid.className = "media-grid";
+                    group.items.forEach((file, fi) => {
+                        const card = document.createElement("div"); card.className = "media-card"; card.id = `card-${file.name}`;
+                        card.style.animation = `fadeSlideUp 0.4s ease ${(gi*0.08)+(fi*0.04)}s backwards`;
+                        const chk = document.createElement("input"); chk.type = "checkbox"; chk.className = "card-checkbox";
+                        chk.onclick = e => { e.stopPropagation(); toggleSelectFile(file.name); }; card.appendChild(chk);
+                        if (file.type === "photo") {
+                            const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
+                        } else if (file.type === "video") {
+                            const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            const bdg = document.createElement("div"); bdg.className = "video-badge"; bdg.innerText = "🎬 Video"; card.appendChild(bdg);
+                        } else if (file.type === "document") {
+                            card.style.cssText += `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:rgba(22,22,28,0.5);border:1px solid rgba(255,255,255,0.05);`;
+                            const n = file.name.toLowerCase();
+                            let ic = "📦";
+                            if (n.endsWith('.exe')) ic = "⚙️";
+                            else if (n.endsWith('.iso')) ic = "💿";
+                            else if (n.endsWith('.pdf')) ic = "📕";
+                            else if (n.endsWith('.docx')||n.endsWith('.doc')) ic = "📘";
+                            else if (n.endsWith('.xlsx')||n.endsWith('.xls')) ic = "📗";
+                            else if (n.endsWith('.zip')||n.endsWith('.rar')||n.endsWith('.7z')) ic = "🗜️";
+                            const sz = (file.size/(1024*1024)).toFixed(1);
+                            card.innerHTML += `
+                                <div style="font-size:34px;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4));animation:floatSlow 4s ease-in-out infinite;animation-delay:${fi*0.15}s">${ic}</div>
+                                <div style="font-size:12px;font-weight:600;color:#D0D0E0;text-align:center;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 4px;line-height:1.4;">${file.name}</div>
+                                <div style="font-size:10px;color:#707088;margin-top:6px;font-weight:500;">${sz} MB</div>
+                            `;
+                        }
+                        card.onclick = () => { if (file.type === "document") window.open(`${STREAM_BASE}${file.url}`,'_blank'); else openLightboxViewer(file.name); };
+                        grid.appendChild(card);
+                    });
+                    sec.appendChild(grid); root.appendChild(sec);
+                });
+            } catch (e) { root.innerHTML = '<div style="color:#EF5350;text-align:center;padding:60px 0;animation:fadeIn 0.4s;">⚠️ Gagal memuat data server</div>'; }
+        }
+
+        function toggleSelectAllGroup(gi, items, checked) {
+            items.forEach(f => {
+                const cb = document.querySelector(`#card-${CSS.escape(f.name)} .card-checkbox`);
+                const card = document.getElementById(`card-${f.name}`);
+                const idx = selectedFileNamesArray.indexOf(f.name);
+                if (checked) {
+                    if (idx === -1) selectedFileNamesArray.push(f.name);
+                    if (cb) cb.checked = true;
+                    if (card) card.classList.add('selected');
+                } else {
+                    if (idx > -1) selectedFileNamesArray.splice(idx, 1);
+                    if (cb) cb.checked = false;
+                    if (card) card.classList.remove('selected');
+                }
+            });
+            updateFloatingActionBarVisibility();
+        }
+        function toggleSelectFile(name) {
+            const idx = selectedFileNamesArray.indexOf(name);
+            const card = document.getElementById(`card-${name}`);
+            if (idx > -1) { selectedFileNamesArray.splice(idx, 1); if (card) card.classList.remove('selected'); }
+            else { selectedFileNamesArray.push(name); if (card) card.classList.add('selected'); }
+            updateFloatingActionBarVisibility();
+        }
+        function updateFloatingActionBarVisibility() {
+            const bar = document.getElementById("floating-action-bar"), txt = document.getElementById("selected-count-text");
+            if (selectedFileNamesArray.length > 0) { txt.innerText = `${selectedFileNamesArray.length} Terpilih`; bar.style.display = "flex"; }
+            else { bar.style.display = "none"; }
+        }
+
+        function openLightboxViewer(name) {
+            const idx = allMediaItemsArray.findIndex(i => i.name === name); if (idx === -1) return;
+            activeLightboxIndex = idx; renderLightbox(); document.getElementById("lightbox-viewer").style.display = "flex";
+        }
+        function renderLightbox() {
+            const f = allMediaItemsArray[activeLightboxIndex], img = document.getElementById("lightbox-img"), vb = document.getElementById("lightbox-video-box"), v = document.getElementById("lightbox-video");
+            v.pause(); v.src = "";
+            if (f.type === "photo") { vb.style.display = "none"; img.src = `${STREAM_BASE}${f.src}`; img.style.display = "block"; }
+            else if (f.type === "video") { img.style.display = "none"; v.src = `${STREAM_BASE}${f.src}`; vb.style.display = "flex"; v.load(); }
+        }
+        function navigateLightbox(dir) {
+            if (allMediaItemsArray.length <= 1) return;
+            activeLightboxIndex += dir;
+            if (activeLightboxIndex >= allMediaItemsArray.length) activeLightboxIndex = 0;
+            if (activeLightboxIndex < 0) activeLightboxIndex = allMediaItemsArray.length - 1;
+            renderLightbox();
+        }
+        function closeLightboxViewer() { document.getElementById("lightbox-video").pause(); document.getElementById("lightbox-viewer").style.display = "none"; }
+
+        async function executeFileUpload(input) {
+            if (!input.files || !input.files.length) return;
+            const files = input.files, toast = document.getElementById("status-toast"); toast.style.display = "block";
+            toast.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:12px;"><span style="font-weight:700;font-size:15px;">Riwayat Ungguhan (${files.length})</span><span style="cursor:pointer;transition:color 0.2s;font-size:18px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;" onclick="this.parentElement.parentElement.style.display='none'" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">✕</span></div><div id="upload-list"></div>`;
+            const list = document.getElementById("upload-list"), user = getActiveCloudUsername();
+            for (let i = 0; i < files.length; i++) {
+                const f = files[i];
+                list.insertAdjacentHTML('beforeend', `<div class="queue-item-row" style="animation:fadeSlideUp 0.3s ${i*0.05}s backwards"><div style="font-size:12px;font-weight:600;color:#D0D0E0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📤 ${f.name}</div><div style="width:100%;height:4px;background:rgba(255,255,255,0.05);border-radius:10px;margin:10px 0;overflow:hidden;"><div class="queue-progress-bar" id="upb-${i}"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#707088;"><span id="upp-${i}">Menunggu...</span><span id="ups-${i}" style="color:#2ECC71;">⚡ 0 Mb/s</span></div></div>`);
+                const fd = new FormData(); fd.append("username", user); fd.append("password", getActiveCloudPassword()); fd.append("file", f);
+                let start = Date.now();
+                const xhr = new XMLHttpRequest(); xhr.open("POST", `${API_BASE}/media/upload?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(getActiveCloudPassword())}`, true);
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded/e.total*100), sec = (Date.now()-start)/1000;
+                        const spd = sec > 0 ? ((e.loaded*8)/(1024*1024)/sec).toFixed(1) : 0;
+                        document.getElementById(`upb-${i}`).style.width = `${pct}%`;
+                        document.getElementById(`upp-${i}`).innerText = `${pct}%`;
+                        document.getElementById(`ups-${i}`).innerText = `⚡ ${spd} Mb/s`;
+                        if (pct === 100) { document.getElementById(`upp-${i}`).innerText = "Menyimpan..."; document.getElementById(`upp-${i}`).style.color = "#2ECC71"; }
+                    }
+                };
+                await new Promise(res => {
+                    xhr.onload = function() { if (xhr.status === 200) { document.getElementById(`upp-${i}`).innerText = "Selesai ✨"; } else { document.getElementById(`upp-${i}`).innerText = "Gagal ❌"; } res(); };
+                    xhr.onerror = function() { document.getElementById(`upp-${i}`).innerText = "Error ❌"; res(); };
+                    xhr.send(fd);
+                });
+            }
+            loadDashboardGallery(); fetchStorageStatus();
+        }
+
+        async function executeMassDownload() {
+            if (!selectedFileNamesArray.length) return;
+            const toast = document.getElementById("status-toast"); toast.style.display = "block";
+            toast.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.05);padding-bottom:12px;"><span style="font-weight:700;font-size:15px;">Riwayat Unduhan (${selectedFileNamesArray.length})</span><span style="cursor:pointer;transition:color 0.2s;font-size:18px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;" onclick="this.parentElement.parentElement.style.display='none'" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">✕</span></div><div id="download-list"></div>`;
+            const list = document.getElementById("download-list"), user = getActiveCloudUsername();
+            for (let i = 0; i < selectedFileNamesArray.length; i++) {
+                const name = selectedFileNamesArray[i];
+                list.insertAdjacentHTML('beforeend', `<div class="queue-item-row" style="animation:fadeSlideUp 0.3s ${i*0.05}s backwards"><div style="font-size:12px;font-weight:600;color:#D0D0E0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📥 ${name}</div><div style="width:100%;height:4px;background:rgba(255,255,255,0.05);border-radius:10px;margin:10px 0;overflow:hidden;"><div class="queue-progress-bar" id="dlb-${i}"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#707088;"><span id="dlp-${i}">Menunggu...</span><span id="dls-${i}" style="color:#2ECC71;">⚡ 0 Mb/s</span></div></div>`);
+                const url = `${STREAM_BASE}/stream/${user}/${encodeURIComponent(name)}`;
+                let start = Date.now();
+                const xhr = new XMLHttpRequest(); xhr.open("GET", url, true); xhr.responseType = "blob";
+                xhr.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const pct = Math.round(e.loaded/e.total*100), sec = (Date.now()-start)/1000;
+                        const spd = sec > 0 ? ((e.loaded*8)/(1024*1024)/sec).toFixed(1) : 0;
+                        document.getElementById(`dlb-${i}`).style.width = `${pct}%`;
+                        document.getElementById(`dlp-${i}`).innerText = `${pct}%`;
+                        document.getElementById(`dls-${i}`).innerText = `⚡ ${spd} Mb/s`;
+                    }
+                };
+                await new Promise(res => {
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            document.getElementById(`dlp-${i}`).innerText = "Selesai ✨";
+                            const link = document.createElement("a"); link.href = URL.createObjectURL(xhr.response); link.download = name; link.click();
+                        } else { document.getElementById(`dlp-${i}`).innerText = "Gagal ❌"; }
+                        res();
+                    };
+                    xhr.onerror = function() { document.getElementById(`dlp-${i}`).innerText = "Error ❌"; res(); };
+                    xhr.send();
+                });
+            }
+            selectedFileNamesArray = []; updateFloatingActionBarVisibility(); loadDashboardGallery();
+        }
+
+        function openDeleteModal() {
+            document.getElementById("delete-modal-msg").innerText = `Apakah Anda yakin ingin menghapus ${selectedFileNamesArray.length} berkas terpilih secara permanen dari Harddisk Eksternal?`;
+            document.getElementById("delete-action-modal").style.display = "flex";
+        }
+        function closeDeleteModal() { document.getElementById("delete-action-modal").style.display = "none"; }
+        function closeDeleteModalOutside(e) { if (e.target.id === "delete-action-modal") closeDeleteModal(); }
+        async function executeMassPermanentDelete() {
+            closeDeleteModal(); const toast = document.getElementById("status-toast"); toast.style.display = "block";
+            toast.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-weight:700;">Penghapusan Berkas</span></div><div class="queue-item-row"><div style="font-size:12px;">🗑️ Memusnahkan berkas dari Harddisk...</div></div>`;
+            const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
+            try {
+                const r = await fetch(`${API_BASE}/media/delete-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,username:user,password:pass}) });
+                const d = await r.json();
+                toast.innerHTML = d.success ? '<div style="color:#2ECC71;padding:8px;">✅ Berkas berhasil dihapus!</div>' : '<div style="color:#EF5350;padding:8px;">❌ Gagal menghapus.</div>';
+            } catch(e) { toast.innerHTML = '<div style="color:#EF5350;padding:8px;">❌ Gangguan koneksi.</div>'; }
+            selectedFileNamesArray = []; updateFloatingActionBarVisibility(); loadDashboardGallery(); fetchStorageStatus();
+            setTimeout(() => toast.style.display = "none", 3500);
+        }
+
+        function openCopyModal() { document.getElementById("copy-action-modal").style.display = "flex"; }
+        function closeCopyModal() { document.getElementById("copy-action-modal").style.display = "none"; }
+        function closeCopyModalOutside(e) { if (e.target.id === "copy-action-modal") closeCopyModal(); }
+        async function submitCopyAction(target) {
+            closeCopyModal(); const toast = document.getElementById("status-toast"); toast.style.display = "block";
+            toast.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="font-weight:700;">Salin Berkas</span></div><div class="queue-item-row"><div style="font-size:12px;">📂 Menyalin berkas...</div></div>`;
+            const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
+            try {
+                await fetch(`${API_BASE}/media/copy-multiple?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({files:selectedFileNamesArray,targetCategory:target,username:user,password:pass}) });
+                toast.innerHTML = '<div style="color:#2ECC71;padding:8px;">✅ Berkas berhasil disalin!</div>';
+            } catch(e) { toast.innerHTML = '<div style="color:#EF5350;padding:8px;">❌ Gagal menyalin.</div>'; }
+            selectedFileNamesArray = []; updateFloatingActionBarVisibility(); loadDashboardGallery();
+            setTimeout(() => toast.style.display = "none", 3000);
+        }
+
+        function executeLogout() {
+            const toast = document.getElementById("status-toast"); toast.style.display = "block";
+            toast.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span style="font-weight:700;">Sesi Berakhir</span></div><div class="queue-item-row"><div style="font-size:12px;">🔒 Menutup sesi cloud...</div></div>`;
+            localStorage.clear(); sessionStorage.clear();
+            setTimeout(() => { window.location.href = "login.html"; }, 1200);
+        }
+
+        // ── Clipboard (Cut/Copy) ──
+        let clipboardFiles = [];
+        let clipboardAction = null; // 'copy' | 'cut'
+
+        function ctxMenuTarget() {
+            const el = document.getElementById('ctx-menu');
+            return el._targetFile || null;
+        }
+
+        document.addEventListener('contextmenu', function(e) {
+            const card = e.target.closest('.media-card');
+            if (!card) { closeCtxMenu(); return; }
+            e.preventDefault();
+            const fileCard = card.id.replace('card-', '');
+            document.getElementById('ctx-menu')._targetFile = fileCard;
+            if (selectedFileNamesArray.indexOf(fileCard) === -1) {
+                selectedFileNamesArray = [fileCard];
+                updateFloatingActionBarVisibility();
+            }
+            const m = document.getElementById('ctx-menu');
+            m.innerHTML = `
+                <button class="ctx-item" onclick="ctxDownload()">⬇️ Download</button>
+                <button class="ctx-item" onclick="ctxCopyPath()">🔗 Copy Path</button>
+                <div class="ctx-divider"></div>
+                <button class="ctx-item" onclick="ctxCopy()">📋 Copy</button>
+                <button class="ctx-item" onclick="ctxCut()">✂️ Cut</button>
+                <button class="ctx-item" onclick="ctxRename()">✏️ Rename</button>
+                <div class="ctx-divider"></div>
+                <button class="ctx-item danger" onclick="ctxDelete()">🗑️ Delete</button>
+            `;
+            showCtxMenu(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('click', function(e) {
+            const m = document.getElementById('ctx-menu');
+            if (m.classList.contains('show') && !e.target.closest('.ctx-menu')) closeCtxMenu();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeCtxMenu();
+        });
+
+        function showCtxMenu(x, y) {
+            const m = document.getElementById('ctx-menu');
+            m.style.display = 'block';
+            const r = m.getBoundingClientRect();
+            let left = x, top = y;
+            if (left + r.width > window.innerWidth) left = window.innerWidth - r.width - 8;
+            if (top + r.height > window.innerHeight) top = window.innerHeight - r.height - 8;
+            m.style.left = left + 'px';
+            m.style.top = top + 'px';
+            m.classList.add('show');
+        }
+
+        function closeCtxMenu() {
+            const m = document.getElementById('ctx-menu');
+            m.classList.remove('show');
+            m.style.display = 'none';
+        }
+
+        function ctxDownload() {
+            closeCtxMenu();
+            executeMassDownload();
+        }
+
+        function ctxCopyPath() {
+            const f = ctxMenuTarget();
+            if (!f) return;
+            const user = getActiveCloudUsername();
+            const path = `${STREAM_BASE}/stream/${user}/${encodeURIComponent(f)}`;
+            navigator.clipboard.writeText(path).then(() => {
+                const t = document.getElementById("status-toast");
+                t.style.display = "block";
+                t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">🔗</span><span style="font-size:13px;">Path disalin: ${f}</span></div>`;
+                setTimeout(() => t.style.display = "none", 2000);
+            }).catch(() => alert(path));
+            closeCtxMenu();
+        }
+
+        function ctxCopy() {
+            clipboardFiles = [...selectedFileNamesArray];
+            clipboardAction = 'copy';
+            closeCtxMenu();
+            const t = document.getElementById("status-toast");
+            t.style.display = "block";
+            t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">📋</span><span style="font-size:13px;">${clipboardFiles.length} file disalin. Buka folder tujuan & klik kanan > Paste</span></div>`;
+            setTimeout(() => t.style.display = "none", 3000);
+        }
+
+        function ctxCut() {
+            clipboardFiles = [...selectedFileNamesArray];
+            clipboardAction = 'cut';
+            closeCtxMenu();
+            const t = document.getElementById("status-toast");
+            t.style.display = "block";
+            t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">✂️</span><span style="font-size:13px;">${clipboardFiles.length} file dipotong. Buka folder tujuan & klik kanan > Paste</span></div>`;
+            setTimeout(() => t.style.display = "none", 3000);
+        }
+
+        function ctxRename() {
+            closeCtxMenu();
+            const f = ctxMenuTarget();
+            if (!f) return;
+            const newName = prompt("Rename file:", f);
+            if (!newName || newName === f) return;
+            const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
+            fetch(`${API_BASE}/media/rename?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ oldName: f, newName })
+            }).then(r => r.json()).then(d => {
+                const t = document.getElementById("status-toast");
+                t.style.display = "block";
+                t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">${d.success ? '✅' : '❌'}</span><span style="font-size:13px;">${d.message || d.message}</span></div>`;
+                setTimeout(() => t.style.display = "none", 2000);
+                if (d.success) loadDashboardGallery();
+            }).catch(() => {});
+        }
+
+        function ctxDelete() {
+            closeCtxMenu();
+            if (selectedFileNamesArray.length === 0) return;
+            document.getElementById("delete-modal-msg").innerText = `${selectedFileNamesArray.length} file akan dihapus permanen.`;
+            document.getElementById("delete-action-modal").style.display = "flex";
+        }
+
+        // ── Paste via right-click on gallery background ──
+        document.addEventListener('contextmenu', function(e) {
+            if (clipboardFiles.length === 0) return;
+            if (e.target.closest('.media-card')) return;
+            if (e.target.closest('.ctx-menu')) return;
+            if (e.target.closest('.sidebar') || e.target.closest('.floating-action-bar')) return;
+            e.preventDefault();
+            closeCtxMenu();
+            showPasteOption(e.clientX, e.clientY);
+        });
+
+        function showPasteOption(x, y) {
+            const m = document.getElementById('ctx-menu');
+            m._targetFile = null;
+            m.innerHTML = `
+                <button class="ctx-item" onclick="ctxPaste('photos')">🖼️ Paste ke Photos</button>
+                <button class="ctx-item" onclick="ctxPaste('videos')">🎬 Paste ke Videos</button>
+                <button class="ctx-item" onclick="ctxPaste('documents')">📁 Paste ke Documents</button>
+                <div class="ctx-divider"></div>
+                <button class="ctx-item" onclick="clearClipboard()">🗑️ Hapus Clipboard</button>
+            `;
+            showCtxMenu(x, y);
+        }
+
+        function ctxPaste(targetCategory) {
+            closeCtxMenu();
+            if (!clipboardFiles.length) return;
+            const user = getActiveCloudUsername(), pass = getActiveCloudPassword();
+            const endpoint = clipboardAction === 'cut' ? 'move' : 'copy-multiple';
+            fetch(`${API_BASE}/media/${endpoint}?username=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ files: clipboardFiles, targetCategory })
+            }).then(r => r.json()).then(d => {
+                const t = document.getElementById("status-toast");
+                t.style.display = "block";
+                const count = d.copied || d.moved || 0;
+                t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">✅</span><span style="font-size:13px;">${count} file ${clipboardAction === 'cut' ? 'dipindahkan' : 'disalin'} ke ${targetCategory}</span></div>`;
+                setTimeout(() => t.style.display = "none", 3000);
+                if (clipboardAction === 'cut') clearClipboard();
+                loadDashboardGallery();
+            }).catch(() => {});
+        }
+
+        function clearClipboard() {
+            clipboardFiles = [];
+            clipboardAction = null;
+            closeCtxMenu();
+        }
+
+        function showAdminMenu() {
+            const el = document.getElementById('menu-admin');
+            if (el && isSuperAdmin()) el.style.display = '';
+            if (isSuperAdmin()) loadUsersSidebar();
+        }
+        async function loadUsersSidebar() {
+            try {
+                const r = await fetch(`${API_BASE}/admin/users?username=admin&pass=admin`);
+                const d = await r.json();
+                if (!d.success) return;
+                const section = document.getElementById('users-section');
+                const container = document.getElementById('users-list');
+                section.style.display = '';
+                container.innerHTML = d.users.filter(u => u.username !== 'admin').map(u =>
+                    `<div class="menu-user-item" id="user-item-${u.username}" onclick="switchToUser('${u.username}')">👤 ${u.username}</div>`
+                ).join('');
+            } catch (e) { /* ignore */ }
+        }
+        function switchToUser(username) {
+            currentTargetUser = username; currentActiveMenu = 'home'; selectedFileNamesArray = []; updateFloatingActionBarVisibility();
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.menu-user-item').forEach(i => i.classList.remove('active'));
+            const el = document.getElementById('user-item-'+username);
+            if (el) el.classList.add('active');
+            document.getElementById("page-title").innerText = `📁 ${username.toUpperCase()}`;
+            loadDashboardGallery();
+            if (window.innerWidth <= 768) closeSidebar();
+        }
+        async function init() { showAdminMenu(); setUserAvatar(); await fetchStorageStatus(); await loadDashboardGallery(); setInterval(fetchStorageStatus, 30000); }
+
+        function setUserAvatar() {
+            const u = getActiveCloudUsername();
+            const avatar = document.getElementById('user-avatar');
+            if (avatar) avatar.textContent = u.charAt(0).toUpperCase();
+        }
+        window.onload = init;
+    </script>
+</body>
+</html>
