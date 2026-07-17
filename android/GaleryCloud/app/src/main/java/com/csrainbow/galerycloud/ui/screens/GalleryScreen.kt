@@ -54,6 +54,7 @@ fun GalleryScreen(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
+    val uploadProgress by viewModel.uploadProgress.collectAsState()
     val pendingDelete by viewModel.pendingDeleteIntent.collectAsState()
     val context = LocalContext.current
 
@@ -70,6 +71,17 @@ fun GalleryScreen(
         viewModel.clearPendingDelete()
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uploadProgress) {
+        if (uploadProgress.isNotEmpty()) {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(uploadProgress, duration = SnackbarDuration.Indefinite)
+        } else {
+            snackbarHostState.currentSnackbarData?.dismiss()
+        }
+    }
+
     LaunchedEffect(pendingDelete) {
         pendingDelete?.let {
             deleteLauncher.launch(IntentSenderRequest.Builder(it).build())
@@ -77,6 +89,7 @@ fun GalleryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

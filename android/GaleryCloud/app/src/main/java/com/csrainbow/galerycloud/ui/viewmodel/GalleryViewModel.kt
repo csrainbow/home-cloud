@@ -53,6 +53,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading
 
+    private val _uploadProgress = MutableStateFlow("")
+    val uploadProgress: StateFlow<String> = _uploadProgress
+
     private val _pendingDeleteIntent = MutableStateFlow<android.content.IntentSender?>(null)
     val pendingDeleteIntent: StateFlow<android.content.IntentSender?> = _pendingDeleteIntent
 
@@ -114,10 +117,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             if (selectedItems.isEmpty()) return@launch
 
             _isUploading.value = true
+            _uploadProgress.value = "Preparing..."
             val baseUrl = "http://${settings.ip}:${settings.port}"
             var successCount = 0
+            val total = selectedItems.size
 
-            for (item in selectedItems) {
+            for ((idx, item) in selectedItems.withIndex()) {
+                _uploadProgress.value = "Uploading ${idx+1} of $total"
                 try {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
                     val bytes = withContext(Dispatchers.IO) {
@@ -135,7 +141,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
 
-            Toast.makeText(getApplication(), "$successCount/${selectedItems.size} uploaded", Toast.LENGTH_SHORT).show()
+            _uploadProgress.value = ""
+            Toast.makeText(getApplication(), "$successCount/$total uploaded", Toast.LENGTH_SHORT).show()
             clearSelection()
             _isUploading.value = false
         }
