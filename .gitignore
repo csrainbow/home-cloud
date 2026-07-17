@@ -3,3 +3,19 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Android
+*.iml
+local.properties
+.gradle/
+build/
+*/build/
+*.apk
+*.aab
+*.keystore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
