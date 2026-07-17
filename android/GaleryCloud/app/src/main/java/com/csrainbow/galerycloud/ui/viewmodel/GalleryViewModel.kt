@@ -54,9 +54,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading
 
-    private val _uploadProgress = MutableStateFlow<Pair<Int, Int>?>(null) // current, total
-    val uploadProgress: StateFlow<Pair<Int, Int>?> = _uploadProgress
-
     private val _uploadProgress = MutableStateFlow("")
     val uploadProgress: StateFlow<String> = _uploadProgress
 
@@ -107,49 +104,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun clearSelection() {
         _isSelectionMode.value = false
         _selectedIds.value = emptySet()
-    }
-
-    fun uploadAllUnsynced() {
-        viewModelScope.launch {
-            val settings = settingsManager.serverSettings.first()
-            if (settings.ip.isEmpty() || settings.port.isEmpty()) {
-                Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            val allItems = _mediaItems.value.values.flatten()
-            val unsynced = allItems.filter { it.syncStatus != SyncStatus.SYNCED }
-            if (unsynced.isEmpty()) {
-                Toast.makeText(getApplication(), "Semua file sudah tersimpan", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            _isUploading.value = true
-            _uploadProgress.value = Pair(0, unsynced.size)
-            val baseUrl = "http://${settings.ip}:${settings.port}"
-            var current = 0
-
-            for (item in unsynced) {
-                try {
-                    val bytes = withContext(Dispatchers.IO) {
-                        getApplication<Application>().contentResolver.openInputStream(item.uri)?.use { it.readBytes() }
-                    }
-                    if (bytes != null) {
-                        val ok = apiService.uploadFile(baseUrl, settings.username, settings.password, item.name, bytes)
-                        if (ok) {
-                            syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                        }
-                    }
-                } catch (e: Exception) {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
-                }
-                current++
-                _uploadProgress.value = Pair(current, unsynced.size)
-            }
-
-            Toast.makeText(getApplication(), "Upload selesai", Toast.LENGTH_SHORT).show()
-            _uploadProgress.value = null
-            _isUploading.value = false
-        }
     }
 
     fun uploadSelectedNow() {
