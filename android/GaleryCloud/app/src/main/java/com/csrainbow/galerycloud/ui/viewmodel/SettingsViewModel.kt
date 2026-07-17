@@ -62,9 +62,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     try {
                         _storageInfo.value = apiService.getStorageInfo(baseUrl, settings.username, settings.password)
                         if (isManual) {
-                            Toast.makeText(context, "Connected! Starting sync...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Connected successfully!", Toast.LENGTH_SHORT).show()
+                            // Trigger immediate sync when manual connection is successful
                             syncManager.triggerOneTimeUpload()
-                            syncManager.startAutoUpload()
                         }
                     } catch (e: Exception) {
                         Log.e("SettingsVM", "Failed to fetch storage info", e)
@@ -85,9 +85,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         Log.d("SettingsVM", "Logging out, stopping sync...")
         viewModelScope.launch {
             syncManager.cancelAllSync()
+            settingsManager.clearSettings()
             _isConnected.value = false
             _storageInfo.value = null
-            Toast.makeText(context, "Disconnected & sync stopped", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Disconnected & credentials cleared", Toast.LENGTH_SHORT).show()
         }
     }
 }

@@ -37,4 +37,8 @@ class SettingsManager(private val context: Context) {
             preferences[PASSWORD_KEY] = settings.password
         }
     }
+
+    suspend fun clearSettings() {
+        context.dataStore.edit { it.clear() }
+    }
 }
