@@ -54,7 +54,6 @@ fun GalleryScreen(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
-    val uploadProgress by viewModel.uploadProgress.collectAsState()
     val pendingDelete by viewModel.pendingDeleteIntent.collectAsState()
     val context = LocalContext.current
 
@@ -71,17 +70,6 @@ fun GalleryScreen(
         viewModel.clearPendingDelete()
     }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(uploadProgress) {
-        if (uploadProgress.isNotEmpty()) {
-            snackbarHostState.currentSnackbarData?.dismiss()
-            snackbarHostState.showSnackbar(uploadProgress, duration = SnackbarDuration.Indefinite)
-        } else {
-            snackbarHostState.currentSnackbarData?.dismiss()
-        }
-    }
-
     LaunchedEffect(pendingDelete) {
         pendingDelete?.let {
             deleteLauncher.launch(IntentSenderRequest.Builder(it).build())
@@ -89,7 +77,6 @@ fun GalleryScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -131,7 +118,8 @@ fun GalleryScreen(
                                     Icon(
                                         if (isUploading) Icons.Default.Sync else Icons.Default.CloudUpload,
                                         contentDescription = "Sync all",
-                                        modifier = Modifier.size(20.dp).rotate(if (isUploading) rotation else 0f),
+                                        modifier = Modifier.size(20.dp)
+                                            .rotate(if (isUploading) rotation else 0f),
                                         tint = if (isUploading) MaterialTheme.colorScheme.primary
                                                else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
