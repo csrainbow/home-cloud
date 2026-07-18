@@ -173,6 +173,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val results = mutableListOf<SyncStatusEntity>()
 
             for ((idx, item) in selectedItems.withIndex()) {
+                if (!isNetworkAvailable()) break
                 val ok = uploadItem(baseUrl, settings, item, contentResolver)
                 if (ok) {
                     results.add(SyncStatusEntity(item.id, "SYNCED"))
@@ -222,6 +223,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val results = mutableListOf<SyncStatusEntity>()
 
             for ((idx, item) in unsynced.withIndex()) {
+                if (!isNetworkAvailable()) break
                 val ok = uploadItem(baseUrl, settings, item, contentResolver)
                 if (ok) {
                     results.add(SyncStatusEntity(item.id, "SYNCED"))

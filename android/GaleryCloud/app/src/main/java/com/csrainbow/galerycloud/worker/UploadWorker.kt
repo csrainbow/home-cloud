@@ -1,18 +1,16 @@
 package com.csrainbow.galerycloud.worker
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.work.CoroutineWorker
-import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.os.Build
 import com.csrainbow.galerycloud.data.local.AppDatabase
 import com.csrainbow.galerycloud.data.local.SyncStatusEntity
 import com.csrainbow.galerycloud.data.repository.MediaRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 import com.csrainbow.galerycloud.data.local.SettingsManager
 import com.csrainbow.galerycloud.data.remote.GalleryApiService
@@ -30,8 +28,10 @@ class UploadWorker(
 
     override suspend fun doWork(): Result {
         Log.d("UploadWorker", "Starting sync job...")
-        createNotificationChannel()
-        setForeground(createForegroundInfo("Memulai sinkron..."))
+        if (!isNetworkAvailable()) {
+            Log.d("UploadWorker", "No network, skipping sync.")
+            return Result.retry()
+        }
 
         val db = AppDatabase.getDatabase(applicationContext)
         val dao = db.syncStatusDao()
@@ -43,73 +43,79 @@ class UploadWorker(
             return Result.failure()
         }
         val baseUrl = "http://${settings.ip}:${settings.port}"
-        
-        try {
+
+        if (!checkServer(baseUrl, settings.username, settings.password)) {
+            Log.d("UploadWorker", "Server unreachable, skipping sync.")
+            return Result.retry()
+        }
+
+        return try {
             val mediaGroups = repository.fetchMediaGroupedByDate()
             val allMedia = mediaGroups.values.flatten()
-            
+
             val unsyncedItems = allMedia.filter { item ->
                 dao.getSyncStatus(item.id)?.status != "SYNCED"
             }
 
             Log.d("UploadWorker", "Found ${unsyncedItems.size} unsynced items.")
+            val results = mutableListOf<SyncStatusEntity>()
             var hasFailures = false
 
-            unsyncedItems.forEach { item ->
+            for (item in unsyncedItems) {
+                if (!isNetworkAvailable()) {
+                    Log.d("UploadWorker", "Network lost, stopping sync.")
+                    hasFailures = true
+                    break
+                }
+                Log.d("UploadWorker", "Uploading: ${item.name}")
                 try {
-                    Log.d("UploadWorker", "Uploading: ${item.name}")
-                    dao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
-                    val inputStream = applicationContext.contentResolver.openInputStream(item.uri)
-                    val bytes = inputStream?.readBytes()
-                    if (bytes != null) {
-                        val success = apiService.uploadFile(
-                            baseUrl, 
-                            settings.username, 
-                            settings.password, 
-                            item.name, 
-                            bytes
-                        )
-                        if (success) {
-                            Log.d("UploadWorker", "Uploaded successfully: ${item.name}")
-                            dao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                        } else {
-                            Log.e("UploadWorker", "Upload failed for: ${item.name}")
-                            hasFailures = true
+                    val ok = withContext(Dispatchers.IO) {
+                        val inputStream = applicationContext.contentResolver.openInputStream(item.uri) ?: return@withContext false
+                        try {
+                            val fileSize = applicationContext.contentResolver
+                                .openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
+                            apiService.uploadFileStreaming(
+                                baseUrl, settings.username, settings.password,
+                                item.name, fileSize, inputStream
+                            )
+                        } finally {
+                            inputStream.close()
                         }
                     }
-                    inputStream?.close()
+                    if (ok) {
+                        Log.d("UploadWorker", "Uploaded successfully: ${item.name}")
+                        results.add(SyncStatusEntity(item.id, "SYNCED"))
+                    } else {
+                        Log.e("UploadWorker", "Upload failed for: ${item.name}")
+                        results.add(SyncStatusEntity(item.id, "FAILED"))
+                        hasFailures = true
+                    }
                 } catch (e: Exception) {
                     Log.e("UploadWorker", "Error uploading ${item.name}", e)
+                    results.add(SyncStatusEntity(item.id, "FAILED"))
                     hasFailures = true
                 }
             }
-            
+
+            dao.insertAll(results)
             Log.d("UploadWorker", "Sync job finished. Failures: $hasFailures")
-            return if (hasFailures) Result.retry() else Result.success()
+            if (hasFailures) Result.retry() else Result.success()
         } catch (e: Exception) {
             Log.e("UploadWorker", "Critical worker failure", e)
-            return Result.retry()
+            Result.retry()
         }
     }
 
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "cloud_sync", "Cloud Sync", NotificationManager.IMPORTANCE_LOW
-            ).apply { setShowBadge(false) }
-            val nm = applicationContext.getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(channel)
-        }
+    private fun isNetworkAvailable(): Boolean {
+        val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun createForegroundInfo(text: String): ForegroundInfo {
-        val notification = NotificationCompat.Builder(applicationContext, "cloud_sync")
-            .setSmallIcon(android.R.drawable.ic_menu_upload)
-            .setContentTitle("Home Cloud")
-            .setContentText(text)
-            .setSilent(true)
-            .setOngoing(true)
-            .build()
-        return ForegroundInfo(1, notification)
+    private suspend fun checkServer(baseUrl: String, username: String, password: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            apiService.testConnection(baseUrl, username, password)
+        }
     }
 }
