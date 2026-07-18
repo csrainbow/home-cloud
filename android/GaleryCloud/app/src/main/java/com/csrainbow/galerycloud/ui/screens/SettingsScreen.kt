@@ -106,8 +106,7 @@ fun SettingsScreen(
             } else {
                 Button(
                     onClick = {
-                        viewModel.saveSettings(ServerSettings(ip, port, username, password))
-                        viewModel.checkConnection(isManual = true)
+                        viewModel.saveAndCheck(ServerSettings(ip, port, username, password))
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
