@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.csrainbow.galerycloud.data.local.AppDatabase
+import com.csrainbow.galerycloud.data.local.ServerSettings
 import com.csrainbow.galerycloud.data.local.SettingsManager
 import com.csrainbow.galerycloud.data.local.SyncStatusEntity
 import com.csrainbow.galerycloud.data.remote.GalleryApiService
@@ -106,6 +107,33 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedIds.value = emptySet()
     }
 
+    private suspend fun checkServer(baseUrl: String, username: String, password: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            apiService.testConnection(baseUrl, username, password)
+        }
+    }
+
+    private suspend fun uploadItem(baseUrl: String, settings: ServerSettings, item: MediaItem, contentResolver: android.content.ContentResolver): Boolean {
+        return try {
+            val fileSize = withContext(Dispatchers.IO) {
+                contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
+            }
+            withContext(Dispatchers.IO) {
+                val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
+                try {
+                    apiService.uploadFileStreaming(
+                        baseUrl, settings.username, settings.password,
+                        item.name, fileSize, inputStream
+                    )
+                } finally {
+                    inputStream.close()
+                }
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     fun uploadSelectedNow() {
         viewModelScope.launch {
             val settings = settingsManager.serverSettings.first()
@@ -117,36 +145,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val selectedItems = allItems.filter { _selectedIds.value.contains(it.id) }
             if (selectedItems.isEmpty()) return@launch
 
-            _isUploading.value = true
-            _uploadProgress.value = "Preparing..."
             val baseUrl = "http://${settings.ip}:${settings.port}"
+            if (!checkServer(baseUrl, settings.username, settings.password)) {
+                Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+
+            _isUploading.value = true
+            _uploadProgress.value = "Uploading..."
             var successCount = 0
             val total = selectedItems.size
             val contentResolver = getApplication<Application>().contentResolver
 
             for ((idx, item) in selectedItems.withIndex()) {
-                _uploadProgress.value = "Uploading ${idx+1} of $total"
-                try {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
-                    val fileSize = withContext(Dispatchers.IO) {
-                        contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-                    }
-                    val ok = withContext(Dispatchers.IO) {
-                        val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
-                        try {
-                            apiService.uploadFileStreaming(
-                                baseUrl, settings.username, settings.password,
-                                item.name, fileSize, inputStream
-                            )
-                        } finally {
-                            inputStream.close()
-                        }
-                    }
-                    if (ok) {
-                        syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                        successCount++
-                    }
-                } catch (e: Exception) {
+                val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                if (ok) {
+                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                    successCount++
+                } else {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
                 }
             }
@@ -172,36 +188,24 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 return@launch
             }
 
-            _isUploading.value = true
-            _uploadProgress.value = "Preparing..."
             val baseUrl = "http://${settings.ip}:${settings.port}"
+            if (!checkServer(baseUrl, settings.username, settings.password)) {
+                Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+
+            _isUploading.value = true
+            _uploadProgress.value = "Uploading..."
             var successCount = 0
             val total = unsynced.size
             val contentResolver = getApplication<Application>().contentResolver
 
             for ((idx, item) in unsynced.withIndex()) {
-                _uploadProgress.value = "Uploading ${idx+1} of $total"
-                try {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCING"))
-                    val fileSize = withContext(Dispatchers.IO) {
-                        contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-                    }
-                    val ok = withContext(Dispatchers.IO) {
-                        val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
-                        try {
-                            apiService.uploadFileStreaming(
-                                baseUrl, settings.username, settings.password,
-                                item.name, fileSize, inputStream
-                            )
-                        } finally {
-                            inputStream.close()
-                        }
-                    }
-                    if (ok) {
-                        syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
-                        successCount++
-                    }
-                } catch (e: Exception) {
+                val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                if (ok) {
+                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                    successCount++
+                } else {
                     syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
                 }
             }
