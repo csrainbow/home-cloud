@@ -1,6 +1,9 @@
 package com.csrainbow.galerycloud.ui.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -107,6 +110,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedIds.value = emptySet()
     }
 
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private suspend fun checkServer(baseUrl: String, username: String, password: String): Boolean {
         return withContext(Dispatchers.IO) {
             apiService.testConnection(baseUrl, username, password)
@@ -136,6 +146,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun uploadSelectedNow() {
         viewModelScope.launch {
+            if (!isNetworkAvailable()) {
+                Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
+                return@launch
+            }
             val settings = settingsManager.serverSettings.first()
             if (settings.ip.isEmpty() || settings.port.isEmpty()) {
                 Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
@@ -156,17 +170,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             var successCount = 0
             val total = selectedItems.size
             val contentResolver = getApplication<Application>().contentResolver
+            val results = mutableListOf<SyncStatusEntity>()
 
             for ((idx, item) in selectedItems.withIndex()) {
                 val ok = uploadItem(baseUrl, settings, item, contentResolver)
                 if (ok) {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                    results.add(SyncStatusEntity(item.id, "SYNCED"))
                     successCount++
                 } else {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
+                    results.add(SyncStatusEntity(item.id, "FAILED"))
                 }
             }
 
+            syncStatusDao.insertAll(results)
             _uploadProgress.value = ""
             Toast.makeText(getApplication(), "$successCount/$total uploaded", Toast.LENGTH_SHORT).show()
             clearSelection()
@@ -176,6 +192,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun uploadAllUnsynced() {
         viewModelScope.launch {
+            if (!isNetworkAvailable()) {
+                Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
+                return@launch
+            }
             val settings = settingsManager.serverSettings.first()
             if (settings.ip.isEmpty() || settings.port.isEmpty()) {
                 Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
@@ -199,17 +219,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             var successCount = 0
             val total = unsynced.size
             val contentResolver = getApplication<Application>().contentResolver
+            val results = mutableListOf<SyncStatusEntity>()
 
             for ((idx, item) in unsynced.withIndex()) {
                 val ok = uploadItem(baseUrl, settings, item, contentResolver)
                 if (ok) {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "SYNCED"))
+                    results.add(SyncStatusEntity(item.id, "SYNCED"))
                     successCount++
                 } else {
-                    syncStatusDao.insertSyncStatus(SyncStatusEntity(item.id, "FAILED"))
+                    results.add(SyncStatusEntity(item.id, "FAILED"))
                 }
             }
 
+            syncStatusDao.insertAll(results)
             _uploadProgress.value = ""
             Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
             _isUploading.value = false

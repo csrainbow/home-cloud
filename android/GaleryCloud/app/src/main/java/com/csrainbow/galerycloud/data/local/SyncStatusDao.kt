@@ -21,6 +21,9 @@ interface SyncStatusDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSyncStatus(syncStatus: SyncStatusEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(syncStatuses: List<SyncStatusEntity>)
+
     @Query("DELETE FROM sync_status WHERE mediaId = :mediaId")
     suspend fun deleteSyncStatus(mediaId: Long)
 }
