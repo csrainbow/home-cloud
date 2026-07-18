@@ -76,6 +76,10 @@ fun GalleryScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadMedia()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
