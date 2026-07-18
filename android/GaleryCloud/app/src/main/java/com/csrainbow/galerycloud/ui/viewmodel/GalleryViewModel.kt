@@ -15,10 +15,10 @@ import com.csrainbow.galerycloud.data.remote.GalleryApiService
 import com.csrainbow.galerycloud.data.repository.MediaRepository
 import com.csrainbow.galerycloud.domain.MediaItem
 import com.csrainbow.galerycloud.domain.SyncStatus
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -58,11 +58,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading
 
+    private val _isUploadingLarge = MutableStateFlow(false)
+    val isUploadingLarge: StateFlow<Boolean> = _isUploadingLarge
+
     private val _uploadProgress = MutableStateFlow("")
     val uploadProgress: StateFlow<String> = _uploadProgress
 
     private val _pendingDeleteIntent = MutableStateFlow<android.content.IntentSender?>(null)
     val pendingDeleteIntent: StateFlow<android.content.IntentSender?> = _pendingDeleteIntent
+
+    companion object {
+        private const val LARGE_FILE_THRESHOLD = 50L * 1024 * 1024 // 50 MB
+    }
 
     init {
         repository = MediaRepository(getApplication(), db.syncStatusDao())
@@ -144,99 +151,131 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private suspend fun uploadItemsParallel(
+        baseUrl: String,
+        settings: ServerSettings,
+        items: List<MediaItem>,
+        contentResolver: android.content.ContentResolver
+    ): Pair<Int, Int> {
+        val smallItems = items.filter { it.size < LARGE_FILE_THRESHOLD }
+        val largeItems = items.filter { it.size >= LARGE_FILE_THRESHOLD }
+
+        if (largeItems.isNotEmpty()) {
+            _isUploadingLarge.value = true
+        }
+
+        val (allResults, totalSuccess) = coroutineScope {
+            val smallDef = async {
+                val r = mutableListOf<SyncStatusEntity>()
+                var c = 0
+                for (item in smallItems) {
+                    if (!isNetworkAvailable()) break
+                    if (uploadItem(baseUrl, settings, item, contentResolver)) {
+                        r.add(SyncStatusEntity(item.id, "SYNCED")); c++
+                    } else {
+                        r.add(SyncStatusEntity(item.id, "FAILED"))
+                    }
+                }
+                Pair(r, c)
+            }
+            val largeDef = async {
+                val r = mutableListOf<SyncStatusEntity>()
+                var c = 0
+                for (item in largeItems) {
+                    if (!isNetworkAvailable()) break
+                    if (uploadItem(baseUrl, settings, item, contentResolver)) {
+                        r.add(SyncStatusEntity(item.id, "SYNCED")); c++
+                    } else {
+                        r.add(SyncStatusEntity(item.id, "FAILED"))
+                    }
+                }
+                Pair(r, c)
+            }
+            val (sr, sc) = smallDef.await()
+            val (lr, lc) = largeDef.await()
+            _isUploadingLarge.value = false
+            Pair(sr + lr, sc + lc)
+        }
+
+        syncStatusDao.insertAll(allResults)
+        return Pair(totalSuccess, items.size)
+    }
+
     fun uploadSelectedNow() {
         viewModelScope.launch {
-            if (!isNetworkAvailable()) {
-                Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-            val settings = settingsManager.serverSettings.first()
-            if (settings.ip.isEmpty() || settings.port.isEmpty()) {
-                Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            val allItems = _mediaItems.value.values.flatten()
-            val selectedItems = allItems.filter { _selectedIds.value.contains(it.id) }
-            if (selectedItems.isEmpty()) return@launch
-
-            val baseUrl = "http://${settings.ip}:${settings.port}"
-            if (!checkServer(baseUrl, settings.username, settings.password)) {
-                Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-
-            _isUploading.value = true
-            _uploadProgress.value = "Uploading..."
-            var successCount = 0
-            val total = selectedItems.size
-            val contentResolver = getApplication<Application>().contentResolver
-            val results = mutableListOf<SyncStatusEntity>()
-
-            for ((idx, item) in selectedItems.withIndex()) {
-                if (!isNetworkAvailable()) break
-                val ok = uploadItem(baseUrl, settings, item, contentResolver)
-                if (ok) {
-                    results.add(SyncStatusEntity(item.id, "SYNCED"))
-                    successCount++
-                } else {
-                    results.add(SyncStatusEntity(item.id, "FAILED"))
+            try {
+                if (!isNetworkAvailable()) {
+                    Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
+                    return@launch
                 }
-            }
+                val settings = settingsManager.serverSettings.first()
+                if (settings.ip.isEmpty() || settings.port.isEmpty()) {
+                    Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val allItems = _mediaItems.value.values.flatten()
+                val selectedItems = allItems.filter { _selectedIds.value.contains(it.id) }
+                if (selectedItems.isEmpty()) return@launch
 
-            syncStatusDao.insertAll(results)
-            _uploadProgress.value = ""
-            Toast.makeText(getApplication(), "$successCount/$total uploaded", Toast.LENGTH_SHORT).show()
-            clearSelection()
-            _isUploading.value = false
+                val baseUrl = "http://${settings.ip}:${settings.port}"
+                if (!checkServer(baseUrl, settings.username, settings.password)) {
+                    Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                _isUploading.value = true
+                _uploadProgress.value = "Uploading..."
+
+                val contentResolver = getApplication<Application>().contentResolver
+                val (successCount, total) = uploadItemsParallel(baseUrl, settings, selectedItems, contentResolver)
+
+                _uploadProgress.value = ""
+                Toast.makeText(getApplication(), "$successCount/$total uploaded", Toast.LENGTH_SHORT).show()
+                clearSelection()
+            } finally {
+                _isUploadingLarge.value = false
+                _isUploading.value = false
+            }
         }
     }
 
     fun uploadAllUnsynced() {
         viewModelScope.launch {
-            if (!isNetworkAvailable()) {
-                Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-            val settings = settingsManager.serverSettings.first()
-            if (settings.ip.isEmpty() || settings.port.isEmpty()) {
-                Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            val allItems = _mediaItems.value.values.flatten()
-            val unsynced = allItems.filter { it.syncStatus != SyncStatus.SYNCED }
-            if (unsynced.isEmpty()) {
-                Toast.makeText(getApplication(), "Semua file sudah tersimpan", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-
-            val baseUrl = "http://${settings.ip}:${settings.port}"
-            if (!checkServer(baseUrl, settings.username, settings.password)) {
-                Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
-                return@launch
-            }
-
-            _isUploading.value = true
-            _uploadProgress.value = "Uploading..."
-            var successCount = 0
-            val total = unsynced.size
-            val contentResolver = getApplication<Application>().contentResolver
-            val results = mutableListOf<SyncStatusEntity>()
-
-            for ((idx, item) in unsynced.withIndex()) {
-                if (!isNetworkAvailable()) break
-                val ok = uploadItem(baseUrl, settings, item, contentResolver)
-                if (ok) {
-                    results.add(SyncStatusEntity(item.id, "SYNCED"))
-                    successCount++
-                } else {
-                    results.add(SyncStatusEntity(item.id, "FAILED"))
+            try {
+                if (!isNetworkAvailable()) {
+                    Toast.makeText(getApplication(), "No internet connection", Toast.LENGTH_LONG).show()
+                    return@launch
                 }
-            }
+                val settings = settingsManager.serverSettings.first()
+                if (settings.ip.isEmpty() || settings.port.isEmpty()) {
+                    Toast.makeText(getApplication(), "Configure server in Settings first", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                val allItems = _mediaItems.value.values.flatten()
+                val unsynced = allItems.filter { it.syncStatus != SyncStatus.SYNCED }
+                if (unsynced.isEmpty()) {
+                    Toast.makeText(getApplication(), "Semua file sudah tersimpan", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
 
-            syncStatusDao.insertAll(results)
-            _uploadProgress.value = ""
-            Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
-            _isUploading.value = false
+                val baseUrl = "http://${settings.ip}:${settings.port}"
+                if (!checkServer(baseUrl, settings.username, settings.password)) {
+                    Toast.makeText(getApplication(), "Can't connect to server. Check Settings.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                _isUploading.value = true
+                _uploadProgress.value = "Uploading..."
+
+                val contentResolver = getApplication<Application>().contentResolver
+                val (successCount, total) = uploadItemsParallel(baseUrl, settings, unsynced, contentResolver)
+
+                _uploadProgress.value = ""
+                Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
+            } finally {
+                _isUploadingLarge.value = false
+                _isUploading.value = false
+            }
         }
     }
 

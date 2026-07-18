@@ -280,12 +280,91 @@
             border-radius: 4px;
         }
 
-        /* ===== GRID — FLUID MASONRY ===== */
-        .media-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-            gap: 14px;
+        /* ===== VIEW MODE BUTTONS ===== */
+        .view-mode-group {
+            display: flex;
+            gap: 4px;
+            margin-right: 12px;
+            padding: 4px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.04);
         }
+        .view-mode-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #606078;
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+        }
+        .view-mode-btn:hover { color: #C0C0D0; background: rgba(255,255,255,0.05); }
+        .view-mode-btn.active { color: #E8E8F0; background: rgba(59,130,246,0.15); box-shadow: 0 0 0 1px rgba(59,130,246,0.2); }
+
+        /* ===== VIEW MODES ===== */
+        .media-grid.grid-medium { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; }
+        .media-grid.grid-medium .media-card { aspect-ratio: unset; width: 170px; min-height: 180px; display: flex; flex-direction: column; align-items: center; padding: 0; border-radius: 14px; overflow: hidden; }
+        .media-grid.grid-medium .media-card img,
+        .media-grid.grid-medium .media-card video { width: 100%; aspect-ratio: 1/1; object-fit: cover; flex-shrink: 0; }
+        .media-grid.grid-medium .media-card:hover img,
+        .media-grid.grid-medium .media-card:hover video { transform: none; }
+        .media-grid.grid-medium .media-card .tile-icon { width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 42px; background: rgba(22,22,28,0.5); }
+        .media-grid.grid-medium .tile-body { padding: 8px 10px 10px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .media-grid.grid-medium .card-info-name { font-size: 12px; text-align: center; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; width: 100%; }
+        .media-grid.grid-medium .card-info-meta { font-size: 10px; display: flex !important; flex-direction: column; align-items: center; gap: 2px; color: #606078; }
+        .media-grid.grid-medium .tile-ext { font-size: 10px; color: #505068; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* -- List: thumbnail + nama file -- */
+        .media-grid.grid-list { display: flex; flex-direction: column; gap: 6px; }
+        .media-grid.grid-list .media-card { aspect-ratio: unset; min-height: 68px; display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-radius: 12px; }
+        .media-grid.grid-list .media-card img,
+        .media-grid.grid-list .media-card video { width: 56px; height: 56px; border-radius: 10px; flex-shrink: 0; object-fit: cover; }
+        .media-grid.grid-list .media-card:hover img { transform: none; }
+        .media-grid.grid-list .card-info-name { font-size: 14px; }
+        .media-grid.grid-list .card-info-meta { display: none !important; }
+        /* -- Details: icon kecil + nama + date + type + size (table row) -- */
+        .media-grid.grid-details { display: flex; flex-direction: column; gap: 2px; }
+        .media-grid.grid-details .media-card { aspect-ratio: unset; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 3px 10px; border-radius: 6px; }
+        .media-grid.grid-details .media-card img,
+        .media-grid.grid-details .media-card video { display: none; }
+        .media-grid.grid-details .media-card:hover { border-color: rgba(255,255,255,0.1); }
+        .media-grid.grid-details .card-info { flex-direction: row !important; align-items: center; gap: 16px !important; }
+        .media-grid.grid-details .card-info-name { font-size: 13px; min-width: 220px; font-weight: 500; }
+        .media-grid.grid-details .card-info-meta { font-size: 11px; flex-shrink: 0; display: flex !important; flex-direction: row; gap: 16px; }
+        .media-grid.grid-details .card-info-meta span { white-space: nowrap; }
+        .media-grid.grid-details .media-card .doc-icon-small { width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+        .media-grid.grid-details .media-card .photo-vid-icon { width: 22px; height: 22px; border-radius: 4px; flex-shrink: 0; object-fit: cover; }
+        /* -- Tiles: icon > name, ext, size berjajar -- */
+        .media-grid.grid-tiles { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+        .media-grid.grid-tiles .media-card { aspect-ratio: unset; width: 140px; min-height: 150px; display: flex; flex-direction: column; align-items: center; padding: 0; border-radius: 12px; overflow: hidden; }
+        .media-grid.grid-tiles .media-card img,
+        .media-grid.grid-tiles .media-card video { width: 100%; aspect-ratio: 1/1; object-fit: cover; flex-shrink: 0; }
+        .media-grid.grid-tiles .media-card:hover img,
+        .media-grid.grid-tiles .media-card:hover video { transform: none; }
+        .media-grid.grid-tiles .media-card .tile-icon { width: 100%; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 36px; background: rgba(22,22,28,0.5); }
+        .media-grid.grid-tiles .tile-body { padding: 6px 8px 8px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .media-grid.grid-tiles .card-info-name { font-size: 11px; text-align: center; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; width: 100%; }
+        .media-grid.grid-tiles .card-info-meta { font-size: 10px; display: flex !important; flex-direction: column; align-items: center; gap: 2px; color: #606078; }
+        .media-grid.grid-tiles .tile-ext { font-size: 9px; color: #505068; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .media-card .card-info {
+            display: none;
+            flex: 1;
+            min-width: 0;
+            font-size: 12px;
+        }
+        .media-grid.grid-list .media-card .card-info,
+        .media-grid.grid-details .media-card .card-info,
+        .media-grid.grid-tiles .media-card .card-info { display: flex; flex-direction: column; gap: 2px; }
+        .card-info-name { font-weight: 600; color: #D0D0E0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-info-meta { color: #707088; font-size: 11px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .card-info-meta span { display: flex; align-items: center; gap: 4px; }
 
         /* ===== MEDIA CARD — GLASS + DEPTH ===== */
         .media-card {
@@ -590,7 +669,7 @@
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 1024px) {
-            .media-grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; }
+            .media-grid.grid-medium .media-card { width: 150px; min-height: 160px; }
             .gallery-container { padding: 28px 24px; }
             .top-bar { padding: 0 24px; height: 72px; }
         }
@@ -600,7 +679,7 @@
             .sidebar.open { position: fixed; top: 0; left: 0; height: 100%; z-index: 100; background: rgba(10,10,14,0.95); transform: translateX(0); margin-left: 0; }
             .top-bar { padding: 0 18px; height: 68px; }
             .gallery-container { padding: 20px 18px; }
-            .media-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+            .media-grid.grid-medium .media-card { width: calc(33.33% - 8px); min-height: 150px; }
             .floating-menu { bottom: 18px; right: 18px; left: 18px; justify-content: center; border-radius: 24px; }
             #status-toast { width: calc(100% - 36px); left: 18px; right: 18px; }
             .lightbox-wrapper { padding: 20px; }
@@ -609,11 +688,13 @@
             .arrow-right { right: 12px; }
             .video-player-container { width: 95%; }
             .copy-box { width: calc(100% - 40px); max-width: 360px; }
+            #view-mode-group { display: none !important; }
             .top-bar .upload-group { gap: 8px !important; }
             .top-bar .upload-group button { padding: 8px 14px !important; font-size: 13px !important; }
         }
         @media (max-width: 480px) {
-            .media-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .media-grid.grid-medium .media-card { width: calc(50% - 6px); min-height: 140px; }
+            .media-grid.grid-tiles .media-card { width: calc(50% - 4px); min-height: 130px; }
             .gallery-container { padding: 16px 14px; }
             #page-title { font-size: 13px !important; }
             .top-bar .logout-text { display: none; }
@@ -676,6 +757,12 @@
                 </button>
                 <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebarCollapse()" title="Sembunyikan sidebar">◀</button>
                 <h2 id="page-title">HOME CLOUD MAIN HUB</h2>
+                <div class="view-mode-group" id="view-mode-group">
+                    <button class="view-mode-btn active" data-mode="grid-medium" onclick="switchViewMode('grid-medium')" title="Grid">🔳</button>
+                    <button class="view-mode-btn" data-mode="grid-list" onclick="switchViewMode('grid-list')" title="List">📋</button>
+                    <button class="view-mode-btn" data-mode="grid-details" onclick="switchViewMode('grid-details')" title="Details">📄</button>
+                    <button class="view-mode-btn" data-mode="grid-tiles" onclick="switchViewMode('grid-tiles')" title="Tiles">🧩</button>
+                </div>
             </div>
             <div class="upload-group" style="display:flex;gap:12px;align-items:center;">
                 <input type="file" id="file-picker" multiple style="display:none;" onchange="executeFileUpload(this)">
@@ -764,6 +851,9 @@
         })();
 
         let currentActiveMenu = "home", currentTargetUser = null, allMediaItemsArray = [], selectedFileNamesArray = [], activeLightboxIndex = 0;
+        let currentViewMode = localStorage.getItem("cloud_view_mode") || "grid-medium";
+        const validModes = ["grid-medium","grid-list","grid-details","grid-tiles"];
+        if (!validModes.includes(currentViewMode)) currentViewMode = "grid-medium";
 
         function getActiveCloudUsername() {
             return localStorage.getItem("cloud_username") || "admin";
@@ -879,34 +969,90 @@
                     cb.onclick = () => toggleSelectAllGroup(gi, group.items, cb.checked);
                     const ht = document.createElement("span"); ht.innerText = group.title;
                     hdr.appendChild(cb); hdr.appendChild(ht); sec.appendChild(hdr);
-                    const grid = document.createElement("div"); grid.className = "media-grid";
+                    const grid = document.createElement("div"); grid.className = `media-grid ${currentViewMode}`;
                     group.items.forEach((file, fi) => {
                         const card = document.createElement("div"); card.className = "media-card"; card.id = `card-${file.name}`;
                         card.style.animation = `fadeSlideUp 0.4s ease ${(gi*0.08)+(fi*0.04)}s backwards`;
                         const chk = document.createElement("input"); chk.type = "checkbox"; chk.className = "card-checkbox";
                         chk.onclick = e => { e.stopPropagation(); toggleSelectFile(file.name); }; card.appendChild(chk);
-                        if (file.type === "photo") {
-                            const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
-                        } else if (file.type === "video") {
-                            const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
-                            const bdg = document.createElement("div"); bdg.className = "video-badge"; bdg.innerText = "🎬 Video"; card.appendChild(bdg);
-                        } else if (file.type === "document") {
-                            card.style.cssText += `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:rgba(22,22,28,0.5);border:1px solid rgba(255,255,255,0.05);`;
-                            const n = file.name.toLowerCase();
-                            let ic = "📦";
-                            if (n.endsWith('.exe')) ic = "⚙️";
-                            else if (n.endsWith('.iso')) ic = "💿";
-                            else if (n.endsWith('.pdf')) ic = "📕";
-                            else if (n.endsWith('.docx')||n.endsWith('.doc')) ic = "📘";
-                            else if (n.endsWith('.xlsx')||n.endsWith('.xls')) ic = "📗";
-                            else if (n.endsWith('.zip')||n.endsWith('.rar')||n.endsWith('.7z')) ic = "🗜️";
-                            const sz = (file.size/(1024*1024)).toFixed(1);
-                            card.innerHTML += `
-                                <div style="font-size:34px;margin-bottom:10px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4));animation:floatSlow 4s ease-in-out infinite;animation-delay:${fi*0.15}s">${ic}</div>
-                                <div style="font-size:12px;font-weight:600;color:#D0D0E0;text-align:center;word-break:break-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 4px;line-height:1.4;">${file.name}</div>
-                                <div style="font-size:10px;color:#707088;margin-top:6px;font-weight:500;">${sz} MB</div>
+                        const n = file.name.toLowerCase();
+                        const ext = n.includes('.') ? n.split('.').pop() : '';
+                        let docIcon = "📦";
+                        if (n.endsWith('.exe')) docIcon = "⚙️";
+                        else if (n.endsWith('.iso')) docIcon = "💿";
+                        else if (n.endsWith('.pdf')) docIcon = "📕";
+                        else if (n.endsWith('.docx')||n.endsWith('.doc')) docIcon = "📘";
+                        else if (n.endsWith('.xlsx')||n.endsWith('.xls')) docIcon = "📗";
+                        else if (n.endsWith('.zip')||n.endsWith('.rar')||n.endsWith('.7z')) docIcon = "🗜️";
+                        const sz = file.size ? (file.size/(1024*1024)).toFixed(1) + ' MB' : '';
+                        const fdate = file.lastModified ? new Date(file.lastModified).toLocaleDateString('id-ID') : '';
+
+                        if (currentViewMode === 'grid-medium') {
+                            const tileIcon = file.type === 'photo' ? '📷' : file.type === 'video' ? '🎬' : docIcon;
+                            const tileExt = ext ? ext.toUpperCase() : file.type.toUpperCase();
+                            if (file.type === "photo") {
+                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
+                            } else if (file.type === "video") {
+                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            } else {
+                                const iconDiv = document.createElement("div"); iconDiv.className = "tile-icon"; iconDiv.textContent = tileIcon; card.appendChild(iconDiv);
+                            }
+                            const body = document.createElement("div"); body.className = "tile-body";
+                            body.innerHTML = `
+                                <div class="card-info-name">${file.name}</div>
+                                <div class="tile-ext">${tileExt}</div>
+                                <div class="card-info-meta">${sz ? `<span>📦 ${sz}</span>` : ''}</div>
                             `;
+                            card.appendChild(body);
+                        } else if (currentViewMode === 'grid-list') {
+                            // List: thumbnail + nama file (no metadata)
+                            if (file.type === "photo") {
+                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
+                            } else if (file.type === "video") {
+                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            } else {
+                                const ic = document.createElement("span"); ic.textContent = docIcon; ic.style.cssText = "font-size:24px;flex-shrink:0;width:40px;text-align:center;"; card.appendChild(ic);
+                            }
+                            const info = document.createElement("div"); info.className = "card-info";
+                            info.innerHTML = `<div class="card-info-name">${file.name}</div><div class="card-info-meta"></div>`;
+                            card.appendChild(info);
+                        } else if (currentViewMode === 'grid-details') {
+                            // Details: icon + nama + date + type + size
+                            if (file.type === "photo" || file.type === "video") {
+                                const ic = document.createElement("span"); ic.textContent = file.type === 'photo' ? '📷' : '🎬'; ic.className = "doc-icon-small"; card.appendChild(ic);
+                            } else {
+                                const ic = document.createElement("span"); ic.textContent = docIcon; ic.className = "doc-icon-small"; card.appendChild(ic);
+                            }
+                            const info = document.createElement("div"); info.className = "card-info";
+                            info.innerHTML = `
+                                <div class="card-info-name">${file.name}</div>
+                                <div class="card-info-meta">
+                                    ${fdate ? `<span>📅 ${fdate}</span>` : ''}
+                                    <span>${file.type}</span>
+                                    ${sz ? `<span>📦 ${sz}</span>` : ''}
+                                </div>
+                            `;
+                            card.appendChild(info);
+                        } else if (currentViewMode === 'grid-tiles') {
+                            // Tiles: thumbnail/icon > nama > ext > size
+                            const tileIcon = file.type === 'photo' ? '📷' : file.type === 'video' ? '🎬' : docIcon;
+                            const tileExt = ext ? ext.toUpperCase() : file.type.toUpperCase();
+                            if (file.type === "photo") {
+                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
+                            } else if (file.type === "video") {
+                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            } else {
+                                const iconDiv = document.createElement("div"); iconDiv.className = "tile-icon"; iconDiv.textContent = tileIcon; card.appendChild(iconDiv);
+                            }
+                            const body = document.createElement("div"); body.className = "tile-body";
+                            body.innerHTML = `
+                                <div class="card-info-name">${file.name}</div>
+                                <div class="tile-ext">${tileExt}</div>
+                                <div class="card-info-meta">${sz ? `<span>${sz}</span>` : ''}</div>
+                            `;
+                            card.appendChild(body);
                         }
+
                         card.onclick = () => { if (file.type === "document") window.open(`${STREAM_BASE}${file.url}`,'_blank'); else openLightboxViewer(file.name); };
                         grid.appendChild(card);
                     });
@@ -939,6 +1085,15 @@
             else { selectedFileNamesArray.push(name); if (card) card.classList.add('selected'); }
             updateFloatingActionBarVisibility();
         }
+        function switchViewMode(mode) {
+            currentViewMode = mode;
+            localStorage.setItem("cloud_view_mode", mode);
+            document.querySelectorAll('.view-mode-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === mode);
+            });
+            loadDashboardGallery();
+        }
+
         function updateFloatingActionBarVisibility() {
             const bar = document.getElementById("floating-action-bar"), txt = document.getElementById("selected-count-text");
             if (selectedFileNamesArray.length > 0) { txt.innerText = `${selectedFileNamesArray.length} Terpilih`; bar.style.display = "flex"; }
@@ -1274,7 +1429,13 @@
             loadDashboardGallery();
             if (window.innerWidth <= 768) closeSidebar();
         }
-        async function init() { showAdminMenu(); setUserAvatar(); await fetchStorageStatus(); await loadDashboardGallery(); setInterval(fetchStorageStatus, 30000); }
+        async function init() {
+            showAdminMenu(); setUserAvatar();
+            document.querySelectorAll('.view-mode-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === currentViewMode);
+            });
+            await fetchStorageStatus(); await loadDashboardGallery(); setInterval(fetchStorageStatus, 30000);
+        }
 
         function setUserAvatar() {
             const u = getActiveCloudUsername();

@@ -21,9 +21,9 @@ class GalleryApiService {
             })
         }
         install(HttpTimeout) {
-            requestTimeoutMillis = 120_000
+            requestTimeoutMillis = 600_000
             connectTimeoutMillis = 10_000
-            socketTimeoutMillis = 120_000
+            socketTimeoutMillis = 600_000
         }
     }
 

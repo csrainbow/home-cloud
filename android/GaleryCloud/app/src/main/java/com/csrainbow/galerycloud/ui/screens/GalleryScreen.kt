@@ -54,6 +54,7 @@ fun GalleryScreen(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
+    val isUploadingLarge by viewModel.isUploadingLarge.collectAsState()
     val pendingDelete by viewModel.pendingDeleteIntent.collectAsState()
     val context = LocalContext.current
 
@@ -110,19 +111,39 @@ fun GalleryScreen(
                                     ),
                                     label = "cloudRotation"
                                 )
-                                IconButton(
-                                    onClick = { viewModel.uploadAllUnsynced() },
-                                    modifier = Modifier.size(32.dp),
-                                    enabled = !isUploading
-                                ) {
-                                    Icon(
-                                        if (isUploading) Icons.Default.Sync else Icons.Default.CloudUpload,
-                                        contentDescription = "Sync all",
-                                        modifier = Modifier.size(20.dp)
-                                            .rotate(if (isUploading) rotation else 0f),
-                                        tint = if (isUploading) MaterialTheme.colorScheme.primary
-                                               else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                val largeSpinTransition = rememberInfiniteTransition(label = "largeSpin")
+                                val largeRotation by largeSpinTransition.animateFloat(
+                                    initialValue = 0f,
+                                    targetValue = 360f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(1000, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Restart
+                                    ),
+                                    label = "largeRotation"
+                                )
+                                Box {
+                                    IconButton(
+                                        onClick = { viewModel.uploadAllUnsynced() },
+                                        modifier = Modifier.size(32.dp),
+                                        enabled = !isUploading
+                                    ) {
+                                        Icon(
+                                            if (isUploading) Icons.Default.Sync else Icons.Default.CloudUpload,
+                                            contentDescription = "Sync all",
+                                            modifier = Modifier.size(20.dp)
+                                                .rotate(if (isUploading) rotation else 0f),
+                                            tint = if (isUploadingLarge) MaterialTheme.colorScheme.tertiary
+                                                   else if (isUploading) MaterialTheme.colorScheme.primary
+                                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (isUploadingLarge) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(32.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    }
                                 }
                                 IconButton(onClick = onNavigateToSettings) {
                                     Icon(Icons.Default.Settings, contentDescription = "Settings",

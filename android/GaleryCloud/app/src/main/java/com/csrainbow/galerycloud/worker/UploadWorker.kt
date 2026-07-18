@@ -8,6 +8,7 @@ import androidx.work.WorkerParameters
 import com.csrainbow.galerycloud.data.local.AppDatabase
 import com.csrainbow.galerycloud.data.local.SyncStatusEntity
 import com.csrainbow.galerycloud.data.repository.MediaRepository
+import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -25,6 +26,85 @@ class UploadWorker(
 
     private val apiService = GalleryApiService()
     private val settingsManager = SettingsManager(context)
+
+    companion object {
+        private const val LARGE_FILE_THRESHOLD = 50L * 1024 * 1024 // 50 MB
+    }
+
+    private suspend fun uploadItem(baseUrl: String, item: com.csrainbow.galerycloud.domain.MediaItem, user: String, pass: String): Boolean {
+        return try {
+            withContext(Dispatchers.IO) {
+                val inputStream = applicationContext.contentResolver.openInputStream(item.uri) ?: return@withContext false
+                try {
+                    val fileSize = applicationContext.contentResolver
+                        .openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
+                    apiService.uploadFileStreaming(
+                        baseUrl, user, pass,
+                        item.name, fileSize, inputStream
+                    )
+                } finally {
+                    inputStream.close()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("UploadWorker", "Error uploading ${item.name}", e)
+            false
+        }
+    }
+
+    private suspend fun uploadQueueParallel(
+        baseUrl: String, items: List<com.csrainbow.galerycloud.domain.MediaItem>,
+        user: String, pass: String
+    ): Pair<List<SyncStatusEntity>, Boolean> {
+        val smallItems = items.filter { it.size < LARGE_FILE_THRESHOLD }
+        val largeItems = items.filter { it.size >= LARGE_FILE_THRESHOLD }
+
+        return coroutineScope {
+            val smallDef = async {
+                val r = mutableListOf<SyncStatusEntity>()
+                var hasFail = false
+                for (item in smallItems) {
+                    if (!isNetworkAvailable()) {
+                        hasFail = true; break
+                    }
+                    Log.d("UploadWorker", "Uploading small: ${item.name} (${item.size / 1024 / 1024}MB)")
+                    val ok = uploadItem(baseUrl, item, user, pass)
+                    if (ok) {
+                        r.add(SyncStatusEntity(item.id, "SYNCED"))
+                        Log.d("UploadWorker", "Small OK: ${item.name}")
+                    } else {
+                        r.add(SyncStatusEntity(item.id, "FAILED"))
+                        hasFail = true
+                        Log.e("UploadWorker", "Small FAILED: ${item.name}")
+                    }
+                }
+                Pair(r, hasFail)
+            }
+            val largeDef = async {
+                val r = mutableListOf<SyncStatusEntity>()
+                var hasFail = false
+                for (item in largeItems) {
+                    if (!isNetworkAvailable()) {
+                        hasFail = true; break
+                    }
+                    Log.d("UploadWorker", "Uploading LARGE: ${item.name} (${item.size / 1024 / 1024}MB)")
+                    val ok = uploadItem(baseUrl, item, user, pass)
+                    if (ok) {
+                        r.add(SyncStatusEntity(item.id, "SYNCED"))
+                        Log.d("UploadWorker", "LARGE OK: ${item.name}")
+                    } else {
+                        r.add(SyncStatusEntity(item.id, "FAILED"))
+                        hasFail = true
+                        Log.e("UploadWorker", "LARGE FAILED: ${item.name}")
+                    }
+                }
+                Pair(r, hasFail)
+            }
+            val (sr, sh) = smallDef.await()
+            val (lr, lh) = largeDef.await()
+            Pair(sr + lr, sh || lh)
+        }
+    }
 
     override suspend fun doWork(): Result {
         Log.d("UploadWorker", "Starting sync job...")
@@ -57,45 +137,9 @@ class UploadWorker(
                 dao.getSyncStatus(item.id)?.status != "SYNCED"
             }
 
-            Log.d("UploadWorker", "Found ${unsyncedItems.size} unsynced items.")
-            val results = mutableListOf<SyncStatusEntity>()
-            var hasFailures = false
+            Log.d("UploadWorker", "Found ${unsyncedItems.size} unsynced items (${unsyncedItems.count { it.size >= LARGE_FILE_THRESHOLD }} large).")
 
-            for (item in unsyncedItems) {
-                if (!isNetworkAvailable()) {
-                    Log.d("UploadWorker", "Network lost, stopping sync.")
-                    hasFailures = true
-                    break
-                }
-                Log.d("UploadWorker", "Uploading: ${item.name}")
-                try {
-                    val ok = withContext(Dispatchers.IO) {
-                        val inputStream = applicationContext.contentResolver.openInputStream(item.uri) ?: return@withContext false
-                        try {
-                            val fileSize = applicationContext.contentResolver
-                                .openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-                            apiService.uploadFileStreaming(
-                                baseUrl, settings.username, settings.password,
-                                item.name, fileSize, inputStream
-                            )
-                        } finally {
-                            inputStream.close()
-                        }
-                    }
-                    if (ok) {
-                        Log.d("UploadWorker", "Uploaded successfully: ${item.name}")
-                        results.add(SyncStatusEntity(item.id, "SYNCED"))
-                    } else {
-                        Log.e("UploadWorker", "Upload failed for: ${item.name}")
-                        results.add(SyncStatusEntity(item.id, "FAILED"))
-                        hasFailures = true
-                    }
-                } catch (e: Exception) {
-                    Log.e("UploadWorker", "Error uploading ${item.name}", e)
-                    results.add(SyncStatusEntity(item.id, "FAILED"))
-                    hasFailures = true
-                }
-            }
+            val (results, hasFailures) = uploadQueueParallel(baseUrl, unsyncedItems, settings.username, settings.password)
 
             dao.insertAll(results)
             Log.d("UploadWorker", "Sync job finished. Failures: $hasFailures")

@@ -54,7 +54,10 @@ const storageConfiguration = multer.diskStorage({
     },
     filename: (req, file, cb) => { cb(null, file.originalname); }
 });
-const uploadEngine = multer({ storage: storageConfiguration });
+const uploadEngine = multer({
+    storage: storageConfiguration,
+    limits: { fileSize: 10 * 1024 * 1024 * 1024 } // 10GB max
+});
 
 // ============================
 // 🖼️ STORAGE INFO & STATS
@@ -191,8 +194,21 @@ app.get('/stream/:username/*', (req, res) => {
 // ⬆️ UPLOAD
 // ============================
 
-app.post('/api/media/upload', uploadEngine.single('file'), authMiddleware, (req, res) => {
-    res.status(200).json({ success: true, message: "Berhasil Backup ke HDD" });
+app.post('/api/media/upload', authMiddleware, (req, res) => {
+    uploadEngine.single('file')(req, res, (err) => {
+        if (err) {
+            console.error(`[UPLOAD ERROR] ${err.message}`);
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(413).json({ success: false, message: "File terlalu besar. Maksimal 10GB." });
+            }
+            return res.status(500).json({ success: false, message: `Upload gagal: ${err.message}` });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: "Tidak ada file yang diterima" });
+        }
+        console.log(`[UPLOAD OK] ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB) -> ${req.file.destination} oleh ${req.authenticatedUser}`);
+        res.status(200).json({ success: true, message: "Berhasil Backup ke HDD" });
+    });
 });
 
 // ============================
