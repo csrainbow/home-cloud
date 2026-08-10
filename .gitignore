@@ -6,7 +6,7 @@ Thumbs.db
 
 # Data pengguna & backup lokal
 server/users.json
-src/
+/src/
 
 # Android
 *.iml
