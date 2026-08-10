@@ -24,6 +24,17 @@ fun GaleryNavGraph(navController: NavHostController) {
     // Scope ViewModel to the NavGraph to share instance between screens
     val viewModel: com.csrainbow.galerycloud.ui.viewmodel.GalleryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshSilently()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     NavHost(navController = navController, startDestination = Screen.Gallery.route) {
         composable(Screen.Gallery.route) {
             GalleryScreen(

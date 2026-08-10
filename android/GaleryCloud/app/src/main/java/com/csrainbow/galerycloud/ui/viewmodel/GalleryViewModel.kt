@@ -58,6 +58,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading
 
+    private val _manualUploading = MutableStateFlow(false)
+
     private val _isUploadingLarge = MutableStateFlow(false)
     val isUploadingLarge: StateFlow<Boolean> = _isUploadingLarge
 
@@ -74,6 +76,21 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     init {
         repository = MediaRepository(getApplication(), db.syncStatusDao())
         observeMedia()
+        observeWorkManagerUploads()
+    }
+
+    private fun observeWorkManagerUploads() {
+        viewModelScope.launch {
+            val wm = androidx.work.WorkManager.getInstance(getApplication())
+            combine(
+                _manualUploading,
+                combine(
+                    wm.getWorkInfosByTagFlow("one_time_upload"),
+                    wm.getWorkInfosByTagFlow("auto_upload")
+                ) { a, b -> (a + b).any { it.state == androidx.work.WorkInfo.State.RUNNING } }
+            ) { manual, worker -> manual || worker }
+                .collect { uploading -> _isUploading.value = uploading }
+        }
     }
 
     private fun observeMedia() {
@@ -85,6 +102,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 _albums.value = allItems.groupBy { it.albumName }
                 _memories.value = allItems.shuffled().take(10)
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun refreshSilently() {
+        viewModelScope.launch {
+            repository.getMediaFlow().collectLatest { groupedItems ->
+                _mediaItems.value = groupedItems
+                val allItems = groupedItems.values.flatten()
+                _albums.value = allItems.groupBy { it.albumName }
+                _memories.value = allItems.shuffled().take(10)
             }
         }
     }
@@ -223,7 +251,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
-                _isUploading.value = true
+                _manualUploading.value = true
                 _uploadProgress.value = "Uploading..."
 
                 val contentResolver = getApplication<Application>().contentResolver
@@ -234,7 +262,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 clearSelection()
             } finally {
                 _isUploadingLarge.value = false
-                _isUploading.value = false
+                _manualUploading.value = false
             }
         }
     }
@@ -264,7 +292,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
-                _isUploading.value = true
+                _manualUploading.value = true
                 _uploadProgress.value = "Uploading..."
 
                 val contentResolver = getApplication<Application>().contentResolver
@@ -274,7 +302,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
             } finally {
                 _isUploadingLarge.value = false
-                _isUploading.value = false
+                _manualUploading.value = false
             }
         }
     }

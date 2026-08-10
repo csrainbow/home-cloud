@@ -100,7 +100,7 @@ Akun pengguna disimpan di `server/users.json` (jangan di-commit ke repo):
 
 - **Web** — buka `http://<ip-server>:3000`, login dengan akun yang terdaftar.
 - **Admin** — buka `http://<ip-server>:3000/admin.html`, login `admin` untuk mengelola pengguna.
-- **Android** — install aplikasi *GaleryCloud*, atur di Settings: IP server, port `3000`, username & password, lalu tekan Save (otomatis tes koneksi). Foto/video yang belum tersinkron akan diupload otomatis.
+- **Android** — install aplikasi *GaleryCloud* (unduh APK dari `http://<ip-server>:3000/GaleryCloud.apk`), atur di Settings: IP server, port `3000`, username & password, lalu tekan Save (otomatis tes koneksi). Foto/video yang belum tersinkron akan diupload otomatis. Ikon sinkron berputar saat upload berjalan (termasuk upload otomatis di background), dan galeri otomatis menyegarkan isinya saat kembali ke layar galeri.
 - **Windows** — jalankan `CloudSyncApp.exe` (folder `cloud-sync`), atau `node sync.js` untuk upload folder ke server.
 
 ## Build APK Android
@@ -110,6 +110,7 @@ cd android/GaleryCloud
 # pastikan local.properties menunjuk ke SDK: sdk.dir=C:\\Users\\<user>\\AppData\\Local\\Android\\Sdk
 ./gradlew assembleRelease
 # hasil: app/build/outputs/apk/release/app-release.apk
+# salin ke public/ agar bisa diunduh: cp app/build/outputs/apk/release/app-release.apk ../../public/GaleryCloud.apk
 ```
 
 ## Perintah Operasional
