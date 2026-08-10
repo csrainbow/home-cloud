@@ -61,14 +61,20 @@ chmod +x /root/uninstall-home-cloud.sh 2>/dev/null || true
 echo "[3b/6] Menyesuaikan path penyimpanan di server.js..."
 sed -i "s|^const ABSOLUTE_HDD_DIR = .*|const ABSOLUTE_HDD_DIR = '$HDD_DIR';|" server/server.js
 
+# Simpan path di .env agar konsisten (UPLOAD_DIR diprioritaskan server)
+if [ ! -f "$INSTALL_DIR/.env" ] || grep -q "^UPLOAD_DIR=" "$INSTALL_DIR/.env" 2>/dev/null; then
+    sed -i "s|^UPLOAD_DIR=.*|UPLOAD_DIR=$HDD_DIR|" "$INSTALL_DIR/.env" 2>/dev/null || true
+fi
+
 # 4. Install dependency npm
 echo "[4/6] Menginstall dependency..."
 npm init -y --silent 2>/dev/null
 npm install express cors multer dotenv
 
-# 5. Buat users.json jika belum ada
-if [ ! -f "$INSTALL_DIR/users.json" ]; then
-    echo '[{"username":"admin","password":"admin"}]' > "$INSTALL_DIR/users.json"
+# 5. Buat users.json jika belum ada (lokasi yang benar: server/users.json)
+if [ ! -f "$INSTALL_DIR/server/users.json" ]; then
+    mkdir -p "$INSTALL_DIR/server"
+    echo '[{"username":"admin","password":"admin"}]' > "$INSTALL_DIR/server/users.json"
     echo "[5/6] users.json dibuat (admin:admin)"
 else
     echo "[5/6] users.json sudah ada"

@@ -4,6 +4,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Data pengguna & backup lokal
+server/users.json
+src/
+
 # Android
 *.iml
 local.properties

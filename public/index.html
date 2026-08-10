@@ -1157,7 +1157,8 @@
             for (let i = 0; i < selectedFileNamesArray.length; i++) {
                 const name = selectedFileNamesArray[i];
                 list.insertAdjacentHTML('beforeend', `<div class="queue-item-row" style="animation:fadeSlideUp 0.3s ${i*0.05}s backwards"><div style="font-size:12px;font-weight:600;color:#D0D0E0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📥 ${name}</div><div style="width:100%;height:4px;background:rgba(255,255,255,0.05);border-radius:10px;margin:10px 0;overflow:hidden;"><div class="queue-progress-bar" id="dlb-${i}"></div></div><div style="display:flex;justify-content:space-between;font-size:10px;color:#707088;"><span id="dlp-${i}">Menunggu...</span><span id="dls-${i}" style="color:#2ECC71;">⚡ 0 Mb/s</span></div></div>`);
-                const url = `${STREAM_BASE}/stream/${user}/${encodeURIComponent(name)}`;
+                const item = allMediaItemsArray.find(f => f.name === name);
+                const url = item ? `${STREAM_BASE}${item.src}` : `${STREAM_BASE}/stream/${user}/documents/${encodeURIComponent(name)}`;
                 let start = Date.now();
                 const xhr = new XMLHttpRequest(); xhr.open("GET", url, true); xhr.responseType = "blob";
                 xhr.onprogress = function(e) {
@@ -1293,8 +1294,8 @@
         function ctxCopyPath() {
             const f = ctxMenuTarget();
             if (!f) return;
-            const user = getActiveCloudUsername();
-            const path = `${STREAM_BASE}/stream/${user}/${encodeURIComponent(f)}`;
+            const item = allMediaItemsArray.find(i => i.name === f);
+            const path = item ? `${STREAM_BASE}${item.src}` : `${STREAM_BASE}/stream/${getActiveCloudUsername()}/documents/${encodeURIComponent(f)}`;
             navigator.clipboard.writeText(path).then(() => {
                 const t = document.getElementById("status-toast");
                 t.style.display = "block";
@@ -1338,7 +1339,7 @@
             }).then(r => r.json()).then(d => {
                 const t = document.getElementById("status-toast");
                 t.style.display = "block";
-                t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">${d.success ? '✅' : '❌'}</span><span style="font-size:13px;">${d.message || d.message}</span></div>`;
+                t.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;"><span style="font-size:14px;">${d.success ? '✅' : '❌'}</span><span style="font-size:13px;">${d.message}</span></div>`;
                 setTimeout(() => t.style.display = "none", 2000);
                 if (d.success) loadDashboardGallery();
             }).catch(() => {});
@@ -1356,7 +1357,7 @@
             if (clipboardFiles.length === 0) return;
             if (e.target.closest('.media-card')) return;
             if (e.target.closest('.ctx-menu')) return;
-            if (e.target.closest('.sidebar') || e.target.closest('.floating-action-bar')) return;
+            if (e.target.closest('.sidebar') || e.target.closest('#floating-action-bar')) return;
             e.preventDefault();
             closeCtxMenu();
             showPasteOption(e.clientX, e.clientY);
@@ -1408,7 +1409,8 @@
         }
         async function loadUsersSidebar() {
             try {
-                const r = await fetch(`${API_BASE}/admin/users?username=admin&pass=admin`);
+                const u = getActiveCloudUsername(), p = getActiveCloudPassword();
+                const r = await fetch(`${API_BASE}/admin/users?username=${encodeURIComponent(u)}&pass=${encodeURIComponent(p)}`);
                 const d = await r.json();
                 if (!d.success) return;
                 const section = document.getElementById('users-section');

@@ -12,8 +12,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+        console.log(`[REQ] ${req.method} ${req.path} user=${req.headers.user || req.query.username || ''} ct=${req.headers['content-type'] || ''} len=${req.headers['content-length'] || '-'}`);
+    }
+    next();
+});
+
 // 🔐 DIREKTORI HDD EKSTERNAL ANDA
-const ABSOLUTE_HDD_DIR = '/media/devmon/sda1-ata-WDC_WD5000LPVX-2/home-cloud-media';
+// Prioritas: .env (UPLOAD_DIR) -> fallback path Linux
+const ABSOLUTE_HDD_DIR = process.env.UPLOAD_DIR || '/media/devmon/sda1-ata-WDC_WD5000LPVX-2/home-cloud-media';
 const USERS_DB_FILE = path.join(__dirname, 'users.json');
 
 // Pastikan DB User ada
@@ -22,9 +30,36 @@ if (!fs.existsSync(USERS_DB_FILE)) {
     fs.writeFileSync(USERS_DB_FILE, JSON.stringify(defaultData, null, 4));
 }
 
+// Pastikan direktori penyimpanan ada (agar statfs/storage-info tidak error di awal)
+if (!fs.existsSync(ABSOLUTE_HDD_DIR)) {
+    fs.mkdirSync(ABSOLUTE_HDD_DIR, { recursive: true });
+}
+
+// Sanitasi username: buang separator path & pola '..' agar tidak bisa traversal
+function sanitizeUsername(name) {
+    return String(name || '')
+        .replace(/[\\/]/g, '')
+        .replace(/\.\./g, '.')
+        .toLowerCase()
+        .trim();
+}
+
+// Sanitasi nama file: buang separator path
+function sanitizeFileName(name) {
+    const s = String(name || '').replace(/[\\/]/g, '').trim();
+    if (!s) return null;
+    return s.replace(/\.\./g, '.');
+}
+
+const ALLOWED_CATEGORIES = ['photos', 'videos', 'documents'];
+function sanitizeCategory(cat) {
+    if (cat === 'home' || ALLOWED_CATEGORIES.includes(cat)) return cat;
+    return 'documents';
+}
+
 // 🛡️ MIDDLEWARE AUTH
 const authMiddleware = (req, res, next) => {
-    const username = (req.headers.user || (req.body && req.body.username) || req.query.username || 'admin').toLowerCase().trim();
+    const username = sanitizeUsername(req.headers.user || (req.body && req.body.username) || req.query.username || 'admin');
     const password = (req.headers.pass || (req.body && req.body.password) || req.query.pass || '').trim();
     try {
         const usersData = JSON.parse(fs.readFileSync(USERS_DB_FILE, 'utf8'));
@@ -41,7 +76,7 @@ const authMiddleware = (req, res, next) => {
 // ⚙️ ENGINE STORAGE
 const storageConfiguration = multer.diskStorage({
     destination: (req, file, cb) => {
-        const username = (req.headers.user || (req.body && req.body.username) || req.query.username || 'admin').toLowerCase().trim();
+        const username = sanitizeUsername(req.headers.user || (req.body && req.body.username) || req.query.username || 'admin');
         let uploadPath = path.join(ABSOLUTE_HDD_DIR, username);
         const ext = path.extname(file.originalname).toLowerCase();
         const photoExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
@@ -50,9 +85,22 @@ const storageConfiguration = multer.diskStorage({
         else if (videoExts.includes(ext)) uploadPath = path.join(uploadPath, 'videos');
         else uploadPath = path.join(uploadPath, 'documents');
         if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+        req.uploadDir = uploadPath;
         cb(null, uploadPath);
     },
-    filename: (req, file, cb) => { cb(null, file.originalname); }
+    filename: (req, file, cb) => {
+        const baseName = sanitizeFileName(file.originalname) || 'file';
+        const ext = path.extname(baseName);
+        const base = path.basename(baseName, ext);
+        const dir = req.uploadDir || path.join(ABSOLUTE_HDD_DIR, 'admin', 'documents');
+        let finalName = baseName;
+        let counter = 1;
+        while (fs.existsSync(path.join(dir, finalName))) {
+            finalName = `${base} (${counter})${ext}`;
+            counter++;
+        }
+        cb(null, finalName);
+    }
 });
 const uploadEngine = multer({
     storage: storageConfiguration,
@@ -123,9 +171,9 @@ app.get('/api/media/list', authMiddleware, (req, res) => {
     let username = req.authenticatedUser;
     const targetUser = req.query.targetUser;
     if (targetUser && username === 'admin') {
-        username = targetUser.toLowerCase().trim();
+        username = sanitizeUsername(targetUser);
     }
-    const category = req.query.category || 'home';
+    const category = sanitizeCategory(req.query.category || 'home');
     const userDir = path.join(ABSOLUTE_HDD_DIR, username);
 
     if (!fs.existsSync(userDir)) {
@@ -134,14 +182,13 @@ app.get('/api/media/list', authMiddleware, (req, res) => {
 
     let scanDirs = [];
     if (category === 'home') {
-        scanDirs = ['photos', 'videos', 'documents'].map(d => ({ name: d, path: path.join(userDir, d) }));
+        scanDirs = ALLOWED_CATEGORIES.map(d => ({ name: d, path: path.join(userDir, d) }));
     } else {
         scanDirs = [{ name: category, path: path.join(userDir, category) }];
     }
 
     const timeline = [];
     const fileTypes = { photos: 'photo', videos: 'video', documents: 'document' };
-    const srcPrefixes = { photos: '/stream/', videos: '/stream/', documents: '/stream/' };
 
     scanDirs.forEach(dir => {
         if (!fs.existsSync(dir.path)) return;
@@ -154,8 +201,8 @@ app.get('/api/media/list', authMiddleware, (req, res) => {
                     const type = fileTypes[dir.name] || 'document';
                     return {
                         name: f,
-                        src: `/stream/${username}/${dir.name}/${f}`,
-                        url: `/stream/${username}/${dir.name}/${f}`,
+                        src: `/stream/${username}/${dir.name}/${encodeURIComponent(f)}`,
+                        url: `/stream/${username}/${dir.name}/${encodeURIComponent(f)}`,
                         type: type,
                         size: stat.size,
                         lastModified: stat.mtime
@@ -179,12 +226,19 @@ app.get('/api/media/list', authMiddleware, (req, res) => {
 // 🚚 STREAM FILE
 // ============================
 
-app.get('/stream/:username/*', (req, res) => {
-    const username = req.params.username;
-    const fileRelPath = req.params[0];
-    const fullFilePath = path.join(ABSOLUTE_HDD_DIR, username, fileRelPath);
-
-    if (!fs.existsSync(fullFilePath)) {
+app.get('/stream/:username/*path', (req, res) => {
+    const username = sanitizeUsername(req.params.username);
+    const rawPath = Array.isArray(req.params.path) ? req.params.path.join('/') : req.params.path;
+    const fileRelPath = String(rawPath || '').replace(/\\/g, '/');
+    if (!fileRelPath || fileRelPath.split('/').includes('..')) {
+        return res.status(400).send('Invalid path');
+    }
+    const userRoot = path.join(ABSOLUTE_HDD_DIR, username);
+    const fullFilePath = path.join(userRoot, fileRelPath);
+    if (!fullFilePath.startsWith(userRoot + path.sep)) {
+        return res.status(403).send('Forbidden');
+    }
+    if (!fs.existsSync(fullFilePath) || !fs.statSync(fullFilePath).isFile()) {
         return res.status(404).send('File not found');
     }
     res.sendFile(fullFilePath);
@@ -219,14 +273,14 @@ app.post('/api/media/delete-multiple', authMiddleware, (req, res) => {
     let username = req.authenticatedUser;
     const targetUser = req.query.targetUser || req.body.targetUser;
     if (targetUser && username === 'admin') {
-        username = targetUser.toLowerCase().trim();
+        username = sanitizeUsername(targetUser);
     }
-    const files = req.body.files || [];
+    const files = (req.body.files || []).map(f => sanitizeFileName(f)).filter(Boolean);
     let deletedCount = 0;
 
     files.forEach(file => {
         // Cari di semua subfolder
-        ['photos', 'videos', 'documents'].forEach(sub => {
+        ALLOWED_CATEGORIES.forEach(sub => {
             const fullPath = path.join(ABSOLUTE_HDD_DIR, username, sub, file);
             if (fs.existsSync(fullPath)) {
                 try {
@@ -248,10 +302,10 @@ app.post('/api/media/copy-multiple', authMiddleware, (req, res) => {
     let username = req.authenticatedUser;
     const targetUser = req.query.targetUser || req.body.targetUser;
     if (targetUser && username === 'admin') {
-        username = targetUser.toLowerCase().trim();
+        username = sanitizeUsername(targetUser);
     }
-    const files = req.body.files || [];
-    const targetCategory = req.body.targetCategory || 'documents';
+    const files = (req.body.files || []).map(f => sanitizeFileName(f)).filter(Boolean);
+    const targetCategory = sanitizeCategory(req.body.targetCategory);
     const targetDir = path.join(ABSOLUTE_HDD_DIR, username, targetCategory);
 
     if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
@@ -259,14 +313,16 @@ app.post('/api/media/copy-multiple', authMiddleware, (req, res) => {
     let copiedCount = 0;
     files.forEach(file => {
         // Cari file di semua folder
-        ['photos', 'videos', 'documents'].forEach(sub => {
+        ALLOWED_CATEGORIES.forEach(sub => {
             const srcPath = path.join(ABSOLUTE_HDD_DIR, username, sub, file);
             if (fs.existsSync(srcPath) && sub !== targetCategory) {
                 const destPath = path.join(targetDir, file);
-                try {
-                    fs.copyFileSync(srcPath, destPath);
-                    copiedCount++;
-                } catch (e) { /* skip */ }
+                if (!fs.existsSync(destPath)) {
+                    try {
+                        fs.copyFileSync(srcPath, destPath);
+                        copiedCount++;
+                    } catch (e) { /* skip */ }
+                }
             }
         });
     });
@@ -282,25 +338,34 @@ app.post('/api/media/rename', authMiddleware, (req, res) => {
     let username = req.authenticatedUser;
     const targetUser = req.query.targetUser || req.body.targetUser;
     if (targetUser && username === 'admin') {
-        username = targetUser.toLowerCase().trim();
+        username = sanitizeUsername(targetUser);
     }
-    const { oldName, newName } = req.body;
+    const oldName = sanitizeFileName(req.body.oldName);
+    const newName = sanitizeFileName(req.body.newName);
     if (!oldName || !newName) {
         return res.status(400).json({ success: false, message: "oldName dan newName wajib diisi" });
     }
+    if (oldName === newName) {
+        return res.json({ success: true, message: "Nama file tidak berubah" });
+    }
     let renamed = false;
-    ['photos', 'videos', 'documents'].forEach(sub => {
+    let conflict = false;
+    for (const sub of ALLOWED_CATEGORIES) {
         const oldPath = path.join(ABSOLUTE_HDD_DIR, username, sub, oldName);
         const newPath = path.join(ABSOLUTE_HDD_DIR, username, sub, newName);
-        const exists = fs.existsSync(oldPath);
-        console.log(`RENAME check: ${oldPath} exists=${exists}`);
-        if (exists) {
-            try {
-                fs.renameSync(oldPath, newPath);
-                renamed = true;
-            } catch (e) { console.log(`RENAME error: ${e.message}`); }
+        if (!fs.existsSync(oldPath)) continue;
+        if (fs.existsSync(newPath)) {
+            conflict = true;
+            break;
         }
-    });
+        try {
+            fs.renameSync(oldPath, newPath);
+            renamed = true;
+        } catch (e) { console.log(`RENAME error: ${e.message}`); }
+    }
+    if (conflict) {
+        return res.status(409).json({ success: false, message: "Nama baru sudah digunakan" });
+    }
     if (renamed) {
         res.json({ success: true, message: "File berhasil diubah" });
     } else {
@@ -316,24 +381,27 @@ app.post('/api/media/move', authMiddleware, (req, res) => {
     let username = req.authenticatedUser;
     const targetUser = req.query.targetUser || req.body.targetUser;
     if (targetUser && username === 'admin') {
-        username = targetUser.toLowerCase().trim();
+        username = sanitizeUsername(targetUser);
     }
-    const { files, targetCategory } = req.body;
-    if (!files || !files.length || !targetCategory) {
+    const files = (req.body.files || []).map(f => sanitizeFileName(f)).filter(Boolean);
+    const targetCategory = sanitizeCategory(req.body.targetCategory);
+    if (!files.length || !targetCategory) {
         return res.status(400).json({ success: false, message: "files dan targetCategory wajib diisi" });
     }
     const targetDir = path.join(ABSOLUTE_HDD_DIR, username, targetCategory);
     if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
     let movedCount = 0;
     files.forEach(file => {
-        ['photos', 'videos', 'documents'].forEach(sub => {
+        ALLOWED_CATEGORIES.forEach(sub => {
             const srcPath = path.join(ABSOLUTE_HDD_DIR, username, sub, file);
             if (fs.existsSync(srcPath) && sub !== targetCategory) {
                 const destPath = path.join(targetDir, file);
                 try {
-                    fs.copyFileSync(srcPath, destPath);
-                    fs.unlinkSync(srcPath);
-                    movedCount++;
+                    if (!fs.existsSync(destPath)) {
+                        fs.copyFileSync(srcPath, destPath);
+                        fs.unlinkSync(srcPath);
+                        movedCount++;
+                    }
                 } catch (e) { /* skip */ }
             }
         });
@@ -362,7 +430,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/register', (req, res) => {
-    const username = (req.body.username || '').toLowerCase().trim();
+    const username = sanitizeUsername(req.body.username);
     const password = (req.body.password || '').trim();
     if (!username || !password) {
         return res.status(400).json({ success: false, message: "Username dan password wajib diisi" });
@@ -403,7 +471,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 app.put('/api/admin/users/:username', authMiddleware, adminMiddleware, (req, res) => {
-    const target = req.params.username.toLowerCase().trim();
+    const target = sanitizeUsername(req.params.username);
     const newPassword = (req.body.password || '').trim();
     if (!newPassword) {
         return res.status(400).json({ success: false, message: "Password baru wajib diisi" });
@@ -423,7 +491,7 @@ app.put('/api/admin/users/:username', authMiddleware, adminMiddleware, (req, res
 });
 
 app.delete('/api/admin/users/:username', authMiddleware, adminMiddleware, (req, res) => {
-    const target = req.params.username.toLowerCase().trim();
+    const target = sanitizeUsername(req.params.username);
     if (target === 'admin') {
         return res.status(403).json({ success: false, message: "Tidak bisa menghapus user admin" });
     }
