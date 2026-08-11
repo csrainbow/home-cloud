@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 import com.csrainbow.galerycloud.data.local.SettingsManager
 import com.csrainbow.galerycloud.data.remote.GalleryApiService
@@ -34,17 +35,19 @@ class UploadWorker(
 
     private suspend fun uploadItem(baseUrl: String, item: com.csrainbow.galerycloud.domain.MediaItem, user: String, pass: String): Boolean {
         return try {
-            withContext(Dispatchers.IO) {
-                val inputStream = applicationContext.contentResolver.openInputStream(item.uri) ?: return@withContext false
-                try {
-                    val fileSize = applicationContext.contentResolver
-                        .openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-                    apiService.uploadFileStreaming(
-                        baseUrl, user, pass,
-                        item.name, fileSize, inputStream
-                    )
-                } finally {
-                    inputStream.close()
+            withTimeout(300_000) {
+                withContext(Dispatchers.IO) {
+                    val inputStream = applicationContext.contentResolver.openInputStream(item.uri) ?: return@withContext false
+                    try {
+                        val fileSize = applicationContext.contentResolver
+                            .openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
+                        apiService.uploadFileStreaming(
+                            baseUrl, user, pass,
+                            item.name, fileSize, inputStream
+                        )
+                    } finally {
+                        inputStream.close()
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -56,6 +59,7 @@ class UploadWorker(
     private suspend fun uploadQueueParallel(
         baseUrl: String, items: List<com.csrainbow.galerycloud.domain.MediaItem>,
         user: String, pass: String,
+        dao: com.csrainbow.galerycloud.data.local.SyncStatusDao,
         onProgress: suspend (name: String) -> Unit
     ): Pair<List<SyncStatusEntity>, Boolean> {
         val smallItems = items.filter { it.size < LARGE_FILE_THRESHOLD }
@@ -73,6 +77,7 @@ class UploadWorker(
                     }
                     Log.d("UploadWorker", "Uploading small: ${item.name} (${item.size / 1024 / 1024}MB)")
                     val ok = uploadItem(baseUrl, item, user, pass)
+                    dao.insertAll(listOf(SyncStatusEntity(item.id, if (ok) "SYNCED" else "FAILED")))
                     onProgress(item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED"))
@@ -94,6 +99,7 @@ class UploadWorker(
                     }
                     Log.d("UploadWorker", "Uploading LARGE: ${item.name} (${item.size / 1024 / 1024}MB)")
                     val ok = uploadItem(baseUrl, item, user, pass)
+                    dao.insertAll(listOf(SyncStatusEntity(item.id, if (ok) "SYNCED" else "FAILED")))
                     onProgress(item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED"))
@@ -140,14 +146,17 @@ class UploadWorker(
             val allMedia = mediaGroups.values.flatten()
 
             val unsyncedItems = allMedia.filter { item ->
-                dao.getSyncStatus(item.id)?.status != "SYNCED"
+                when (dao.getSyncStatus(item.id)?.status) {
+                    "SYNCED", "FAILED" -> false
+                    else -> true
+                }
             }
 
             Log.d("UploadWorker", "Found ${unsyncedItems.size} unsynced items (${unsyncedItems.count { it.size >= LARGE_FILE_THRESHOLD }} large).")
 
             val done = java.util.concurrent.atomic.AtomicInteger(0)
             val total = unsyncedItems.size
-            val (results, hasFailures) = uploadQueueParallel(baseUrl, unsyncedItems, settings.username, settings.password) { name ->
+            val (results, hasFailures) = uploadQueueParallel(baseUrl, unsyncedItems, settings.username, settings.password, dao) { name ->
                 setProgress(workDataOf("done" to done.incrementAndGet(), "total" to total, "name" to name))
             }
 

@@ -260,6 +260,24 @@ app.post('/api/media/upload', authMiddleware, (req, res) => {
         if (!req.file) {
             return res.status(400).json({ success: false, message: "Tidak ada file yang diterima" });
         }
+        const stripDupSuffix = (n) => n.replace(/\s*\(\d+\)\s*(?=\.[^.]+$)/, '');
+        try {
+            const dir = path.dirname(req.file.path);
+            const dup = fs.readdirSync(dir).find((f) => {
+                const p = path.join(dir, f);
+                if (p === req.file.path) return false;
+                let st;
+                try { st = fs.statSync(p); } catch (e) { return false; }
+                return st.isFile() && st.size === req.file.size && stripDupSuffix(f) === stripDupSuffix(req.file.originalname);
+            });
+            if (dup) {
+                fs.unlinkSync(req.file.path);
+                console.log(`[DEDUPE] ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB) sudah ada sebagai ${dup}, dilewati oleh ${req.authenticatedUser}`);
+                return res.status(200).json({ success: true, message: "Berhasil Backup ke HDD (duplikat dilewati)", duplicate: true });
+            }
+        } catch (e) {
+            console.error(`[DEDUPE ERROR] ${e.message}`);
+        }
         console.log(`[UPLOAD OK] ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB) -> ${req.file.destination} oleh ${req.authenticatedUser}`);
         res.status(200).json({ success: true, message: "Berhasil Backup ke HDD" });
     });

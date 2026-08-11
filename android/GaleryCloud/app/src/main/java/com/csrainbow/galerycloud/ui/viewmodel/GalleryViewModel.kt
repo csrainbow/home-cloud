@@ -184,18 +184,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun uploadItem(baseUrl: String, settings: ServerSettings, item: MediaItem, contentResolver: android.content.ContentResolver): Boolean {
         return try {
-            val fileSize = withContext(Dispatchers.IO) {
-                contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
-            }
-            withContext(Dispatchers.IO) {
-                val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
-                try {
-                    apiService.uploadFileStreaming(
-                        baseUrl, settings.username, settings.password,
-                        item.name, fileSize, inputStream
-                    )
-                } finally {
-                    inputStream.close()
+            withTimeout(300_000) {
+                val fileSize = withContext(Dispatchers.IO) {
+                    contentResolver.openAssetFileDescriptor(item.uri, "r")?.use { it.length } ?: -1L
+                }
+                withContext(Dispatchers.IO) {
+                    val inputStream = contentResolver.openInputStream(item.uri) ?: return@withContext false
+                    try {
+                        apiService.uploadFileStreaming(
+                            baseUrl, settings.username, settings.password,
+                            item.name, fileSize, inputStream
+                        )
+                    } finally {
+                        inputStream.close()
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -226,6 +228,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 for (item in smallItems) {
                     if (!isNetworkAvailable()) break
                     val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                    syncStatusDao.insertAll(listOf(SyncStatusEntity(item.id, if (ok) "SYNCED" else "FAILED")))
                     onProgress(done.incrementAndGet(), total, item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED")); c++
@@ -241,6 +244,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 for (item in largeItems) {
                     if (!isNetworkAvailable()) break
                     val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                    syncStatusDao.insertAll(listOf(SyncStatusEntity(item.id, if (ok) "SYNCED" else "FAILED")))
                     onProgress(done.incrementAndGet(), total, item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED")); c++
