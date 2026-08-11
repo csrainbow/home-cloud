@@ -245,6 +245,72 @@ app.get('/stream/:username/*path', (req, res) => {
 });
 
 // ============================
+// 🖼️ THUMBNAIL (cache .thumbs, file asli tetap utuh)
+// ============================
+
+const THUMB_WIDTH = 480;
+const THUMB_QUALITY = 65;
+const THUMB_PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+const THUMB_VIDEO_EXTS = ['.mp4', '.mkv', '.mov', '.avi'];
+
+function serveFile(res, filePath) {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    const rs = fs.createReadStream(filePath);
+    rs.on('error', () => { if (!res.headersSent) res.status(404).send('File not found'); });
+    rs.pipe(res);
+}
+
+app.get('/thumb/:username/*path', async (req, res) => {
+    const username = sanitizeUsername(req.params.username);
+    const rawPath = Array.isArray(req.params.path) ? req.params.path.join('/') : req.params.path;
+    const fileRelPath = String(rawPath || '').replace(/\\/g, '/');
+    if (!fileRelPath || fileRelPath.split('/').includes('..')) {
+        return res.status(400).send('Invalid path');
+    }
+    const userRoot = path.join(ABSOLUTE_HDD_DIR, username);
+    const fullFilePath = path.join(userRoot, fileRelPath);
+    if (!fullFilePath.startsWith(userRoot + path.sep)) {
+        return res.status(403).send('Forbidden');
+    }
+    if (!fs.existsSync(fullFilePath) || !fs.statSync(fullFilePath).isFile()) {
+        return res.status(404).send('File not found');
+    }
+
+    const ext = path.extname(fullFilePath).toLowerCase();
+    const isPhoto = THUMB_PHOTO_EXTS.includes(ext);
+    const isVideo = THUMB_VIDEO_EXTS.includes(ext);
+    if (!isPhoto && !isVideo) {
+        return serveFile(res, fullFilePath);
+    }
+
+    const thumbFile = path.join(userRoot, '.thumbs', fileRelPath.replace(/\.[^.]+$/, '')) + '.thumb.jpg';
+    try {
+        const st = fs.statSync(fullFilePath);
+        let needGen = true;
+        if (fs.existsSync(thumbFile)) {
+            const tst = fs.statSync(thumbFile);
+            needGen = tst.size === 0 || tst.mtimeMs < st.mtimeMs;
+        }
+        if (needGen) {
+            fs.mkdirSync(path.dirname(thumbFile), { recursive: true });
+            if (isVideo) {
+                const { execFile } = require('child_process');
+                await new Promise((resolve, reject) => {
+                    execFile('ffmpeg', ['-ss', '0.3', '-i', fullFilePath, '-frames:v', '1', '-vf', `scale=${THUMB_WIDTH}:-2`, '-q:v', '5', '-y', thumbFile], (err) => err ? reject(err) : resolve());
+                });
+            } else {
+                const sharp = require('sharp');
+                await sharp(fullFilePath, { animated: false }).rotate().resize({ width: THUMB_WIDTH, withoutEnlargement: true }).jpeg({ quality: THUMB_QUALITY }).toFile(thumbFile);
+            }
+        }
+        return serveFile(res, thumbFile);
+    } catch (e) {
+        console.error(`[THUMB ERROR] ${fullFilePath}: ${e.message}`);
+        return serveFile(res, fullFilePath);
+    }
+});
+
+// ============================
 // ⬆️ UPLOAD
 // ============================
 

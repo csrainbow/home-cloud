@@ -1,0 +1,9 @@
+{
+  "name": "home-cloud-server",
+  "version": "1.0.0",
+  "description": "Home cloud server - media backup & streaming",
+  "main": "server.js",
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

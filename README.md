@@ -100,6 +100,7 @@ Akun pengguna disimpan di `server/users.json` (jangan di-commit ke repo):
 
 - **Web** — buka `http://<ip-server>:3000`, login dengan akun yang terdaftar.
 - **Admin** — buka `http://<ip-server>:3000/admin.html`, login `admin` untuk mengelola pengguna.
+- **Web** — tampilan galeri di browser memakai *thumbnail* (480px, JPEG kualitas 65, di-cache di `.thumbs/`) sehingga halaman cepat dimuat; file asli tetap utuh ukuran penuh saat dibuka/diunduh. Thumbnail dibuat otomatis dengan `sharp` (foto) & `ffmpeg` (video), jadi pastikan install dulu: `cd server && npm install` (server memakai ffmpeg di PATH).
 - **Android** — install aplikasi *GaleryCloud* (unduh APK dari `http://<ip-server>:3000/GaleryCloud.apk`), atur di Settings: IP server, port `3000`, username & password, lalu tekan Save (otomatis tes koneksi). Foto/video yang belum tersinkron akan diupload otomatis. Ikon sinkron berputar saat upload berjalan (termasuk upload otomatis di background) dengan indikator file yang sedang diupload (`Uploading 3/10: IMG_0042.jpg`), setiap file yang selesai langsung ditandai centang hijau di galeri (live), lalu konfirmasi `✓ N dari M tersimpan` setelah selesai, dan galeri otomatis menyegarkan isinya saat kembali ke layar galeri. Server otomatis melewati file duplikat (nama & ukuran sama) sehingga file tidak terupload dua kali.
 - **Windows** — jalankan `CloudSyncApp.exe` (folder `cloud-sync`), atau `node sync.js` untuk upload folder ke server.
 

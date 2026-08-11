@@ -944,6 +944,21 @@
             root.innerHTML = `<div class="media-grid">${h}</div>`;
         }
 
+        function tileMediaElement(file) {
+            const src = `${STREAM_BASE}${file.src}`;
+            const thumbSrc = src.replace('/stream/', '/thumb/');
+            if (file.type === "video") {
+                const img = document.createElement("img"); img.src = thumbSrc; img.loading = "lazy";
+                img.onerror = () => {
+                    const v = document.createElement("video"); v.src = `${src}#t=0.5`; v.preload = "metadata";
+                    img.replaceWith(v);
+                };
+                return img;
+            }
+            const img = document.createElement("img"); img.src = thumbSrc; img.loading = "lazy";
+            return img;
+        }
+
         async function loadDashboardGallery() {
             const root = document.getElementById("gallery-timeline-root");
             renderSkeleton(root);
@@ -990,10 +1005,8 @@
                         if (currentViewMode === 'grid-medium') {
                             const tileIcon = file.type === 'photo' ? '📷' : file.type === 'video' ? '🎬' : docIcon;
                             const tileExt = ext ? ext.toUpperCase() : file.type.toUpperCase();
-                            if (file.type === "photo") {
-                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
-                            } else if (file.type === "video") {
-                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            if (file.type === "photo" || file.type === "video") {
+                                card.appendChild(tileMediaElement(file));
                             } else {
                                 const iconDiv = document.createElement("div"); iconDiv.className = "tile-icon"; iconDiv.textContent = tileIcon; card.appendChild(iconDiv);
                             }
@@ -1006,10 +1019,8 @@
                             card.appendChild(body);
                         } else if (currentViewMode === 'grid-list') {
                             // List: thumbnail + nama file (no metadata)
-                            if (file.type === "photo") {
-                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
-                            } else if (file.type === "video") {
-                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            if (file.type === "photo" || file.type === "video") {
+                                card.appendChild(tileMediaElement(file));
                             } else {
                                 const ic = document.createElement("span"); ic.textContent = docIcon; ic.style.cssText = "font-size:24px;flex-shrink:0;width:40px;text-align:center;"; card.appendChild(ic);
                             }
@@ -1037,10 +1048,8 @@
                             // Tiles: thumbnail/icon > nama > ext > size
                             const tileIcon = file.type === 'photo' ? '📷' : file.type === 'video' ? '🎬' : docIcon;
                             const tileExt = ext ? ext.toUpperCase() : file.type.toUpperCase();
-                            if (file.type === "photo") {
-                                const img = document.createElement("img"); img.src = `${STREAM_BASE}${file.src}`; img.loading = "lazy"; card.appendChild(img);
-                            } else if (file.type === "video") {
-                                const v = document.createElement("video"); v.src = `${STREAM_BASE}${file.src}#t=0.5`; v.preload = "metadata"; card.appendChild(v);
+                            if (file.type === "photo" || file.type === "video") {
+                                card.appendChild(tileMediaElement(file));
                             } else {
                                 const iconDiv = document.createElement("div"); iconDiv.className = "tile-icon"; iconDiv.textContent = tileIcon; card.appendChild(iconDiv);
                             }
