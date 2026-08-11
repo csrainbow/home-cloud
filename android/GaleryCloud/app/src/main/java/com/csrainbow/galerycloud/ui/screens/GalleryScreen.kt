@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -55,6 +56,7 @@ fun GalleryScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
     val isUploadingLarge by viewModel.isUploadingLarge.collectAsState()
+    val uploadStatus by viewModel.uploadProgress.collectAsState()
     val pendingDelete by viewModel.pendingDeleteIntent.collectAsState()
     val context = LocalContext.current
 
@@ -144,6 +146,16 @@ fun GalleryScreen(
                                             color = MaterialTheme.colorScheme.tertiary
                                         )
                                     }
+                                }
+                                if (uploadStatus.isNotEmpty()) {
+                                    Text(
+                                        text = uploadStatus,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.widthIn(max = 130.dp)
+                                    )
                                 }
                                 IconButton(onClick = onNavigateToSettings) {
                                     Icon(Icons.Default.Settings, contentDescription = "Settings",

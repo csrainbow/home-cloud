@@ -60,6 +60,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _manualUploading = MutableStateFlow(false)
 
+    private val uploadGeneration = java.util.concurrent.atomic.AtomicInteger(0)
+
     private val _isUploadingLarge = MutableStateFlow(false)
     val isUploadingLarge: StateFlow<Boolean> = _isUploadingLarge
 
@@ -82,14 +84,36 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private fun observeWorkManagerUploads() {
         viewModelScope.launch {
             val wm = androidx.work.WorkManager.getInstance(getApplication())
-            combine(
-                _manualUploading,
-                combine(
-                    wm.getWorkInfosByTagFlow("one_time_upload"),
-                    wm.getWorkInfosByTagFlow("auto_upload")
-                ) { a, b -> (a + b).any { it.state == androidx.work.WorkInfo.State.RUNNING } }
-            ) { manual, worker -> manual || worker }
-                .collect { uploading -> _isUploading.value = uploading }
+            val infosFlow = wm.getWorkInfosByTagFlow("one_time_upload")
+                .combine(wm.getWorkInfosByTagFlow("auto_upload")) { a, b -> a + b }
+            var wasRunning = false
+            combine(_manualUploading, infosFlow) { manual, list -> manual to list }
+                .collect { (manual, list) ->
+                    val running = list.filter { it.state == androidx.work.WorkInfo.State.RUNNING }
+                    _isUploading.value = manual || running.isNotEmpty()
+
+                    val prog = running.maxByOrNull { it.progress.getLong("done", -1L) }
+                    if (prog != null) {
+                        wasRunning = true
+                        val done = prog.progress.getLong("done", -1L)
+                        val total = prog.progress.getLong("total", -1L)
+                        val name = prog.progress.getString("name")
+                        if (done >= 0 && total > 0) {
+                            _uploadProgress.value = "Uploading $done/$total${if (!name.isNullOrEmpty()) ": $name" else ""}"
+                        }
+                    } else if (wasRunning && running.isEmpty()) {
+                        wasRunning = false
+                        if (!manual) {
+                            if (list.any { it.state == androidx.work.WorkInfo.State.SUCCEEDED }) {
+                                _uploadProgress.value = "\u2713 Upload selesai"
+                                delay(3000)
+                                if (!_isUploading.value) _uploadProgress.value = ""
+                            } else {
+                                _uploadProgress.value = ""
+                            }
+                        }
+                    }
+                }
         }
     }
 
@@ -183,8 +207,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         baseUrl: String,
         settings: ServerSettings,
         items: List<MediaItem>,
-        contentResolver: android.content.ContentResolver
+        contentResolver: android.content.ContentResolver,
+        onProgress: (done: Int, total: Int, name: String) -> Unit
     ): Pair<Int, Int> {
+        val total = items.size
+        val done = java.util.concurrent.atomic.AtomicInteger(0)
         val smallItems = items.filter { it.size < LARGE_FILE_THRESHOLD }
         val largeItems = items.filter { it.size >= LARGE_FILE_THRESHOLD }
 
@@ -198,7 +225,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 var c = 0
                 for (item in smallItems) {
                     if (!isNetworkAvailable()) break
-                    if (uploadItem(baseUrl, settings, item, contentResolver)) {
+                    val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                    onProgress(done.incrementAndGet(), total, item.name)
+                    if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED")); c++
                     } else {
                         r.add(SyncStatusEntity(item.id, "FAILED"))
@@ -211,7 +240,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 var c = 0
                 for (item in largeItems) {
                     if (!isNetworkAvailable()) break
-                    if (uploadItem(baseUrl, settings, item, contentResolver)) {
+                    val ok = uploadItem(baseUrl, settings, item, contentResolver)
+                    onProgress(done.incrementAndGet(), total, item.name)
+                    if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED")); c++
                     } else {
                         r.add(SyncStatusEntity(item.id, "FAILED"))
@@ -253,11 +284,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                 _manualUploading.value = true
                 _uploadProgress.value = "Uploading..."
+                val gen = uploadGeneration.incrementAndGet()
 
                 val contentResolver = getApplication<Application>().contentResolver
-                val (successCount, total) = uploadItemsParallel(baseUrl, settings, selectedItems, contentResolver)
+                val (successCount, total) = uploadItemsParallel(baseUrl, settings, selectedItems, contentResolver) { done, count, name ->
+                    _uploadProgress.value = "Uploading $done/$count: $name"
+                }
 
-                _uploadProgress.value = ""
+                _manualUploading.value = false
+                _uploadProgress.value = "\u2713 $successCount dari $total tersimpan"
+                delay(3000)
+                if (uploadGeneration.get() == gen) _uploadProgress.value = ""
                 Toast.makeText(getApplication(), "$successCount/$total uploaded", Toast.LENGTH_SHORT).show()
                 clearSelection()
             } finally {
@@ -294,11 +331,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
                 _manualUploading.value = true
                 _uploadProgress.value = "Uploading..."
+                val gen = uploadGeneration.incrementAndGet()
 
                 val contentResolver = getApplication<Application>().contentResolver
-                val (successCount, total) = uploadItemsParallel(baseUrl, settings, unsynced, contentResolver)
+                val (successCount, total) = uploadItemsParallel(baseUrl, settings, unsynced, contentResolver) { done, count, name ->
+                    _uploadProgress.value = "Uploading $done/$count: $name"
+                }
 
-                _uploadProgress.value = ""
+                _manualUploading.value = false
+                _uploadProgress.value = "\u2713 $successCount dari $total tersimpan"
+                delay(3000)
+                if (uploadGeneration.get() == gen) _uploadProgress.value = ""
                 Toast.makeText(getApplication(), "$successCount/$total tersimpan", Toast.LENGTH_SHORT).show()
             } finally {
                 _isUploadingLarge.value = false

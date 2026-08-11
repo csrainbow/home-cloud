@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import com.csrainbow.galerycloud.data.local.AppDatabase
 import com.csrainbow.galerycloud.data.local.SyncStatusEntity
 import com.csrainbow.galerycloud.data.repository.MediaRepository
@@ -54,10 +55,13 @@ class UploadWorker(
 
     private suspend fun uploadQueueParallel(
         baseUrl: String, items: List<com.csrainbow.galerycloud.domain.MediaItem>,
-        user: String, pass: String
+        user: String, pass: String,
+        onProgress: suspend (name: String) -> Unit
     ): Pair<List<SyncStatusEntity>, Boolean> {
         val smallItems = items.filter { it.size < LARGE_FILE_THRESHOLD }
         val largeItems = items.filter { it.size >= LARGE_FILE_THRESHOLD }
+        val done = java.util.concurrent.atomic.AtomicInteger(0)
+        val total = items.size
 
         return coroutineScope {
             val smallDef = async {
@@ -69,6 +73,7 @@ class UploadWorker(
                     }
                     Log.d("UploadWorker", "Uploading small: ${item.name} (${item.size / 1024 / 1024}MB)")
                     val ok = uploadItem(baseUrl, item, user, pass)
+                    onProgress(item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED"))
                         Log.d("UploadWorker", "Small OK: ${item.name}")
@@ -89,6 +94,7 @@ class UploadWorker(
                     }
                     Log.d("UploadWorker", "Uploading LARGE: ${item.name} (${item.size / 1024 / 1024}MB)")
                     val ok = uploadItem(baseUrl, item, user, pass)
+                    onProgress(item.name)
                     if (ok) {
                         r.add(SyncStatusEntity(item.id, "SYNCED"))
                         Log.d("UploadWorker", "LARGE OK: ${item.name}")
@@ -139,7 +145,11 @@ class UploadWorker(
 
             Log.d("UploadWorker", "Found ${unsyncedItems.size} unsynced items (${unsyncedItems.count { it.size >= LARGE_FILE_THRESHOLD }} large).")
 
-            val (results, hasFailures) = uploadQueueParallel(baseUrl, unsyncedItems, settings.username, settings.password)
+            val done = java.util.concurrent.atomic.AtomicInteger(0)
+            val total = unsyncedItems.size
+            val (results, hasFailures) = uploadQueueParallel(baseUrl, unsyncedItems, settings.username, settings.password) { name ->
+                setProgress(workDataOf("done" to done.incrementAndGet(), "total" to total, "name" to name))
+            }
 
             dao.insertAll(results)
             Log.d("UploadWorker", "Sync job finished. Failures: $hasFailures")
